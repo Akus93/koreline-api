@@ -5,8 +5,8 @@ from koreline.models import UserProfile
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
-    firstName = serializers.CharField(source='first_name')
-    lastName = serializers.CharField(source='last_name')
+    firstName = serializers.CharField(source='first_name', allow_blank=True)
+    lastName = serializers.CharField(source='last_name', allow_blank=True)
 
     class Meta:
         model = User
@@ -14,9 +14,30 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    birthDate = serializers.DateField(source='birth_date')
+    user = UserSerializer()
+    birthDate = serializers.DateField(source='birth_date', allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = ('user', 'birthDate')
+        fields = ('id', 'user', 'birthDate')
+
+    def update(self, instance, validated_data):
+        try:
+            user_data = validated_data.pop('user')
+        except KeyError:
+            user_data = {}
+        first_name = user_data.get('first_name')
+        last_name = user_data.get('last_name')
+        if first_name:
+            instance.user.first_name = first_name
+        if last_name:
+            instance.user.last_name = last_name
+
+        if last_name or first_name:
+            instance.user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
