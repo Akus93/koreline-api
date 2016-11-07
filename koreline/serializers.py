@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
-from koreline.models import UserProfile
+from koreline.models import UserProfile, Lesson
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -41,3 +41,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+
+class LessonSerializer(serializers.ModelSerializer):
+    teacher = UserProfileSerializer(read_only=True)
+
+    class Meta:
+        model = Lesson
+        fields = ('teacher', 'title', 'slug')
+

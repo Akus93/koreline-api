@@ -134,6 +134,15 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 
+# Django cache
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+
 # DjangoREST
 
 REST_FRAMEWORK = {
@@ -147,9 +156,15 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-    )
+    ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'register_view': '4/h',
+    }
 }
-    
+
 # Allauth
 
 SITE_ID = 1

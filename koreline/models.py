@@ -12,6 +12,12 @@ class UserProfile(models.Model):
         return self.user.get_full_name() or self.user.username
 
 
+class Lesson(models.Model):
+    teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel')
+    title = models.CharField(verbose_name='Tytuł', max_length=255)
+    slug = models.SlugField()
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -26,3 +32,4 @@ def save_user_profile(sender, instance, **kwargs):
 @receiver(post_delete, sender=UserProfile)
 def post_delete_user(sender, instance, *args, **kwargs):
     instance.user.delete()
+
