@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.utils.text import slugify
 
 from koreline.models import UserProfile, Lesson
 
@@ -45,8 +46,31 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     teacher = UserProfileSerializer(read_only=True)
+    slug = serializers.SlugField(read_only=True)
 
     class Meta:
         model = Lesson
         fields = ('teacher', 'title', 'slug')
 
+    def create(self, validated_data):
+        slug = slugify(validated_data['title'])
+        number = 0
+        while Lesson.objects.filter(slug=slug).exists():
+            number += 1
+            slug = slugify('{}-{}'.format(validated_data['title'], str(number)))
+        validated_data['slug'] = slug
+        return super(LessonSerializer, self).create(validated_data)
+
+    def update(self, instance, validated_data):
+        title = validated_data.get('title', None)
+        if title:
+            slug = slugify(title)
+            number = 0
+            while Lesson.objects.filter(slug=slug).exists():
+                number += 1
+                slug = slugify('{}-{}'.format(title, str(number)))
+            validated_data['slug'] = slug
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

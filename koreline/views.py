@@ -1,4 +1,5 @@
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson
 from koreline.serializers import UserProfileSerializer, LessonSerializer
@@ -17,7 +18,16 @@ class LessonViewSet(ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [IsOwnerOrReadOnlyForLesson]
-    # throttle_classes = (LessonThrottle, ) TODO odkomentowac po testach
+    # throttle_classes = (LessonThrottle, ) # TODO odkomentowac po testach
+    lookup_field = 'slug'
 
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user.userprofile)
+
+
+class CurrentUserView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsOwnerOrReadOnlyForUserProfile]
+    serializer_class = UserProfileSerializer
+
+    def get_object(self):
+        return UserProfile.objects.get(user=self.request.user)
