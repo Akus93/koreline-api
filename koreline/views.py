@@ -1,3 +1,4 @@
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, RetrieveAPIView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -20,7 +21,7 @@ class UserProfileViewSet(ModelViewSet):
 class LessonViewSet(ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    permission_classes = [IsOwnerOrReadOnlyForLesson]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnlyForLesson]
     # throttle_classes = (LessonThrottle, ) # TODO odkomentowac po testach
     lookup_field = 'slug'
     filter_backends = (DjangoFilterBackend,)
