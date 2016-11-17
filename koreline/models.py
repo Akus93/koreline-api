@@ -16,10 +16,27 @@ class UserProfile(models.Model):
         verbose_name_plural = 'Profile użytkowników'
 
 
+class Subject(models.Model):
+    name = models.CharField(verbose_name='Nazwa', max_length=128)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Przedmiot'
+        verbose_name_plural = 'Przedmioty'
+
+
 class Lesson(models.Model):
     teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel')
     title = models.CharField(verbose_name='Tytuł', max_length=255)
+    subject = models.ForeignKey(Subject, verbose_name='Przedmiot')
     slug = models.SlugField(unique=True)
+    price = models.PositiveSmallIntegerField(verbose_name='Cena za 15min')
+
+    @property
+    def subject_name(self):
+        return self.subject.name
 
     def __str__(self):
         return self.title

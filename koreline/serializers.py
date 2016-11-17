@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson
+from koreline.models import UserProfile, Lesson, Subject
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -44,15 +44,29 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
+class SubjectSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Subject
+        fields = ('name',)
+
+
 class LessonSerializer(serializers.ModelSerializer):
     teacher = UserProfileSerializer(read_only=True)
     slug = serializers.SlugField(read_only=True)
+    subject = serializers.CharField(source='subject_name')
 
     class Meta:
         model = Lesson
-        fields = ('teacher', 'title', 'slug')
+        fields = ('title', 'slug', 'subject', 'price', 'teacher')
 
     def create(self, validated_data):
+        subject = validated_data['subject_name']
+        if Subject.objects.filter(name=subject).exists():
+            validated_data['subject'] = Subject.objects.get(name=subject)
+            del validated_data['subject_name']
+        else:
+            raise serializers.ValidationError({'subject': 'Nie ma takiego przedmiotu.'})
         slug = slugify(validated_data['title'])
         number = 0
         while Lesson.objects.filter(slug=slug).exists():

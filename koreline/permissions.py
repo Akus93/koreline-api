@@ -11,7 +11,9 @@ class IsOwnerOrReadOnlyForUserProfile(BasePermission):
 class IsOwnerOrReadOnlyForLesson(BasePermission):
 
     def has_object_permission(self, request, view, obj):
-        return request.method in SAFE_METHODS or\
-               request.user and is_authenticated(request.user) and obj.teacher.user == request.user
+        return request.method in SAFE_METHODS or obj.teacher.user == request.user
+
+    def has_permission(self, request, view):
+        return request.method in SAFE_METHODS or request.user and is_authenticated(request.user)
 
 
