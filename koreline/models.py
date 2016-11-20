@@ -7,6 +7,7 @@ from django.dispatch import receiver
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Użytkownik')
     birth_date = models.DateField(null=True, blank=True, verbose_name='Data urodzenia')
+    is_teacher = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username

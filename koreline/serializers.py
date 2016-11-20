@@ -17,10 +17,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     birthDate = serializers.DateField(source='birth_date', allow_null=True)
+    isTeacher = serializers.BooleanField(source='is_teacher', read_only=True)
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'user', 'birthDate')
+        fields = ('id', 'user', 'birthDate', 'isTeacher')
 
     def update(self, instance, validated_data):
         try:

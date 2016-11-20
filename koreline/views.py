@@ -29,6 +29,9 @@ class LessonViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user.userprofile)
+        user = self.request.user.userprofile
+        user.is_teacher = True
+        user.save()
 
 
 class CurrentUserView(RetrieveUpdateDestroyAPIView):
