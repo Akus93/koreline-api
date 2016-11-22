@@ -1,8 +1,22 @@
+from base64 import b64decode
+from uuid import uuid4
+
+from django.core.files.base import ContentFile
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
 from koreline.models import UserProfile, Lesson, Subject
+
+
+class ImageBase64Field(serializers.ImageField):
+    def to_internal_value(self, data):
+        try:
+            decoded_image = b64decode(data.split(',')[1])
+        except TypeError:
+            raise serializers.ValidationError('Niepoprawny format zdjęcia.')
+        data = ContentFile(decoded_image, name=str(uuid4()) + '.png')
+        return super(ImageBase64Field, self).to_internal_value(data)
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -18,10 +32,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     birthDate = serializers.DateField(source='birth_date', allow_null=True)
     isTeacher = serializers.BooleanField(source='is_teacher', read_only=True)
+    photo = ImageBase64Field()
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'user', 'birthDate', 'isTeacher')
+        fields = ('id', 'user', 'birthDate', 'isTeacher', 'photo')
 
     def update(self, instance, validated_data):
         try:
