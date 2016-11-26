@@ -7,9 +7,10 @@ from koreline.models import Lesson
 class LessonFilter(FilterSet):
     teacher = CharFilter(name='teacher__user__username')
     subject = CharFilter(name='subject__name')
-    min_price = NumberFilter(name='price', lookup_expr='gte')
-    max_price = NumberFilter(name='price', lookup_expr='lte')
+    stage = CharFilter(name='stage__name')
+    minPrice = NumberFilter(name='price', lookup_expr='gte')
+    maxPrice = NumberFilter(name='price', lookup_expr='lte')
 
     class Meta:
         model = Lesson
-        fields = ['teacher', 'slug', 'subject', 'min_price', 'max_price']
+        fields = ['teacher', 'slug', 'subject', 'stage', 'minPrice', 'maxPrice']

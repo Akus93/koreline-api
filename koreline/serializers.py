@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject
+from koreline.models import UserProfile, Lesson, Subject, Stage
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -36,7 +36,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'user', 'birthDate', 'isTeacher', 'photo')
+        fields = ('id', 'user', 'birthDate', 'isTeacher', 'photo', 'tokens')
 
     def update(self, instance, validated_data):
         try:
@@ -71,10 +71,11 @@ class LessonSerializer(serializers.ModelSerializer):
     teacher = UserProfileSerializer(read_only=True)
     slug = serializers.SlugField(read_only=True)
     subject = serializers.CharField(source='subject_name')
+    stage = serializers.CharField(source='stage_name')
 
     class Meta:
         model = Lesson
-        fields = ('title', 'slug', 'subject', 'price', 'teacher')
+        fields = ('title', 'slug', 'subject', 'stage', 'price', 'teacher')
 
     def create(self, validated_data):
         subject = validated_data['subject_name']
@@ -83,6 +84,14 @@ class LessonSerializer(serializers.ModelSerializer):
             del validated_data['subject_name']
         else:
             raise serializers.ValidationError({'subject': 'Nie ma takiego przedmiotu.'})
+
+        stage = validated_data['stage_name']
+        if Stage.objects.filter(name=stage).exists():
+            validated_data['stage'] = Stage.objects.get(name=stage)
+            del validated_data['stage_name']
+        else:
+            raise serializers.ValidationError({'stage': 'Nie ma takiego poziomu.'})
+
         slug = slugify(validated_data['title'])
         number = 0
         while Lesson.objects.filter(slug=slug).exists():
@@ -92,6 +101,11 @@ class LessonSerializer(serializers.ModelSerializer):
         return super(LessonSerializer, self).create(validated_data)
 
     def update(self, instance, validated_data):
+        if validated_data.get('stage_name', None):
+            del validated_data['stage_name']
+        if validated_data.get('subject_name'):
+            del validated_data['subject_name']
+
         title = validated_data.get('title', None)
         if title:
             slug = slugify(title)

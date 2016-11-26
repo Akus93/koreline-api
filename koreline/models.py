@@ -9,6 +9,7 @@ class UserProfile(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name='Data urodzenia')
     is_teacher = models.BooleanField(default=False)
     photo = models.ImageField(upload_to='photos', max_length=255, blank=True)
+    tokens = models.PositiveIntegerField(verbose_name="Żetony", default=0)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
@@ -29,16 +30,32 @@ class Subject(models.Model):
         verbose_name_plural = 'Przedmioty'
 
 
+class Stage(models.Model):
+    name = models.CharField(verbose_name='Nazwa', max_length=128)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Poziom'
+        verbose_name_plural = 'Poziom'
+
+
 class Lesson(models.Model):
     teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel')
     title = models.CharField(verbose_name='Tytuł', max_length=255)
     subject = models.ForeignKey(Subject, verbose_name='Przedmiot')
     slug = models.SlugField(unique=True)
     price = models.PositiveSmallIntegerField(verbose_name='Cena za 15min')
+    stage = models.ForeignKey(Stage, verbose_name='Poziom')
 
     @property
     def subject_name(self):
         return self.subject.name
+
+    @property
+    def stage_name(self):
+        return self.stage.name
 
     def __str__(self):
         return self.title

@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson
 from koreline.serializers import UserProfileSerializer, LessonSerializer
-from koreline.models import UserProfile, Lesson, Subject
+from koreline.models import UserProfile, Lesson, Subject, Stage
 from koreline.filters import LessonFilter
 from koreline.throttles import LessonThrottle
 
@@ -46,3 +46,9 @@ class SubjectsView(APIView):
     def get(self, request, format=None):
         subjects = [subject.name for subject in Subject.objects.all()]
         return Response(subjects)
+
+
+class StagesView(APIView):
+    def get(self, request, format=None):
+        stages = [stage.name for stage in Stage.objects.all()]
+        return Response(stages)

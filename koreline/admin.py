@@ -1,6 +1,6 @@
 from django.contrib import admin
-from koreline.models import UserProfile, Lesson, Subject
+from koreline.models import UserProfile, Lesson, Subject, Stage
 
 
-admin.site.register([UserProfile, Lesson, Subject])
+admin.site.register([UserProfile, Lesson, Subject, Stage])
 
