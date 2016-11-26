@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -36,7 +36,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'user', 'birthDate', 'isTeacher', 'photo', 'tokens')
+        fields = ('user', 'birthDate', 'isTeacher', 'photo', 'tokens')
 
     def update(self, instance, validated_data):
         try:
@@ -58,13 +58,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
-
-
-class SubjectSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Subject
-        fields = ('name',)
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -118,3 +111,13 @@ class LessonSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+class LessonMembershipSerializer(serializers.ModelSerializer):
+    lesson = LessonSerializer()
+    student = UserProfileSerializer()
+
+    class Meta:
+        model = LessonMembership
+        fields = ('lesson', 'student', 'create_date')
+

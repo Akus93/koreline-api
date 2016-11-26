@@ -48,6 +48,7 @@ class Lesson(models.Model):
     slug = models.SlugField(unique=True)
     price = models.PositiveSmallIntegerField(verbose_name='Cena za 15min')
     stage = models.ForeignKey(Stage, verbose_name='Poziom')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
 
     @property
     def subject_name(self):
@@ -63,6 +64,21 @@ class Lesson(models.Model):
     class Meta:
         verbose_name = 'Lekcja'
         verbose_name_plural = 'Lekcje'
+        ordering = ['-create_date']
+
+
+class LessonMembership(models.Model):
+    lesson = models.ForeignKey(Lesson, verbose_name='Lekcja')
+    student = models.ForeignKey(UserProfile, verbose_name='Uczeń')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+    def __str__(self):
+        return '{} zapisany do {}'.format(self.student, self.lesson)
+
+    class Meta:
+        verbose_name = 'zapis na lekcje'
+        verbose_name_plural = 'Zapisy na lekcje'
+        ordering = ['-create_date']
 
 
 @receiver(post_save, sender=User)

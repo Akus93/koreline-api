@@ -1,7 +1,7 @@
 from django_filters.rest_framework import FilterSet
 from django_filters import CharFilter, NumberFilter
 
-from koreline.models import Lesson
+from koreline.models import Lesson, LessonMembership
 
 
 class LessonFilter(FilterSet):
@@ -14,3 +14,12 @@ class LessonFilter(FilterSet):
     class Meta:
         model = Lesson
         fields = ['teacher', 'slug', 'subject', 'stage', 'minPrice', 'maxPrice']
+
+
+class LessonMembershipFilter(FilterSet):
+    student = CharFilter(name='teacher__user__username')
+    teacher = CharFilter(name='lesson__teacher__user__username')
+
+    class Meta:
+        model = LessonMembership
+        fields = ['student', 'teacher']
