@@ -26,3 +26,9 @@ class IsTeacherOrStudentForLessonMembership(BasePermission):
         return request.method in SAFE_METHODS or request.user and is_authenticated(request.user)
 
 
+class IsTeacher(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return obj.lesson.teacher.user == request.user
+
+    def has_permission(self, request, view):
+        return request.user and is_authenticated(request.user) and request.user.userprofile.is_teacher

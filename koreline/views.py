@@ -6,7 +6,7 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, D
 from django_filters.rest_framework import DjangoFilterBackend
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
-    IsTeacherOrStudentForLessonMembership
+    IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership
 from koreline.filters import LessonFilter, LessonMembershipFilter
@@ -76,13 +76,14 @@ class JoinToLessonView(APIView):
 
 class StudentLessonsListView(ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = LessonMembershipSerializer
+    serializer_class = LessonSerializer
 
     def get_queryset(self):
-        return LessonMembership.objects.filter(student=self.request.user.userprofile)
+        return Lesson.objects.filter(lessonmembership__student__user=self.request.user)
 
 
 class LeaveLessonView(APIView):
+    """Opuszczenie lekcji przez ucznia"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
@@ -94,10 +95,11 @@ class LeaveLessonView(APIView):
         if not LessonMembership.objects.filter(student=self.request.user.userprofile, lesson=lesson).exists():
             return Response(status=status.HTTP_404_NOT_FOUND)
         LessonMembership.objects.get(student=self.request.user.userprofile, lesson=lesson).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'success': True}, status=status.HTTP_204_NO_CONTENT)
 
 
 class LessonStudentsListView(APIView):
+    """Lista uczniow danej lekcji"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, slug, format=None):
@@ -120,18 +122,26 @@ class LessonStudentsListView(APIView):
         return Response(students, status=status.HTTP_200_OK)
 
 
-# class LessonMembershipViewSet(ModelViewSet):
-#     queryset = LessonMembership.objects.all()
-#     serializer_class = LessonMembershipSerializer
-#     permission_classes = [IsTeacherOrStudentForLessonMembership]  # TODO
-#     # throttle_classes = (, ) # TODO
-#     # lookup_field = 'lesson__slug'
-#     filter_backends = (DjangoFilterBackend,)
-#     filter_class = LessonMembershipFilter
-#
-#     # def perform_create(self, serializer):
-#     #     serializer.save(teacher=self.request.user.userprofile)
-#     #     user = self.request.user.userprofile
-#     #     user.is_teacher = True
-#     #     user.save()
+class UnsubscribeStudentFromLessonView(APIView):
+    """Wydalenie ucznia z lekcji"""
+    permission_classes = [IsAuthenticated, IsTeacher]
 
+    def post(self, request, format=None):
+
+        slug = request.data.get('lesson', '')
+        username = request.data.get('username', '')
+
+        try:
+            student = UserProfile.objects.get(user__username=username)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            lesson_membership = LessonMembership.objects.get(lesson__teacher__user=request.user, lesson__slug=slug,
+                                                             student=student)
+        except LessonMembership.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        lesson_membership.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
