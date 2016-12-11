@@ -4,11 +4,12 @@ from rest_framework.views import APIView, Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, DestroyAPIView
 from django_filters.rest_framework import DjangoFilterBackend
+from uuid import uuid4
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
-from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership
+from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -145,3 +146,54 @@ class UnsubscribeStudentFromLessonView(APIView):
         lesson_membership.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OpenConversationRoomView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def post(self, request, format=None):
+        """Open room"""
+
+        slug = request.data.get('lesson', '')
+        username = request.data.get('student', '')
+
+        try:
+            student = UserProfile.objects.get(user__username=username)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            lesson = Lesson.objects.get(slug=slug)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if lesson.teacher.user != request.user:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+        if not LessonMembership.objects.filter(lesson=lesson, student=student).exists():
+            return Response({'error': 'Ten uczeń nie należy do tej lekcji.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            room = Room.objects.get(lesson=lesson, student=student, is_open=True)
+        except Room.DoesNotExist:
+            new_key = str(uuid4()).replace('-', '')
+            room = Room(lesson=lesson, student=student, key=new_key)
+            room.save()
+
+        return Response(RoomSerializer(room).data, status=status.HTTP_200_OK)
+
+
+class ConversationRoomView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, key, format=None):
+
+        try:
+            conversation_room = Room.objects.select_related('student__user', 'lesson__teacher__user').get(key=key)
+        except Room.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if conversation_room.student.user == request.user or conversation_room.lesson.teacher.user == request.user:
+            return Response(RoomSerializer(conversation_room).data, status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)

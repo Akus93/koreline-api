@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -120,4 +120,13 @@ class LessonMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonMembership
         fields = ('lesson', 'student', 'create_date')
+
+
+class RoomSerializer(serializers.ModelSerializer):
+    lesson = LessonSerializer()
+    student = UserProfileSerializer()
+
+    class Meta:
+        model = Room
+        fields = ('lesson', 'student', 'key', 'create_date')
 

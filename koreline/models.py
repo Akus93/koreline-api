@@ -81,6 +81,36 @@ class LessonMembership(models.Model):
         ordering = ['-create_date']
 
 
+class Room(models.Model):
+    lesson = models.ForeignKey(Lesson, verbose_name='Lekcja')
+    student = models.ForeignKey(UserProfile, verbose_name='Uczeń')
+    key = models.CharField(verbose_name='Klucz', max_length=100, unique=True)
+    is_open = models.BooleanField(default=True, verbose_name='Czy otwarty')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+    close_date = models.DateTimeField(auto_now_add=True, verbose_name='Data zamknięcia')
+
+    def __str__(self):
+        return 'Pokój konwersacji {}'.format(self.lesson)
+
+    class Meta:
+        verbose_name = 'pokój konwersacji'
+        verbose_name_plural = 'Pokoje konwersacji'
+
+
+# class RoomMember(models.Model):
+#     room = models.ForeignKey(Room, verbose_name='Pokój')
+#     member = models.ForeignKey(UserProfile, verbose_name='Uczeń')
+#     join_date = models.DateTimeField(auto_now_add=True, verbose_name='Data dołączenia')
+#     leave_date = models.DateTimeField(verbose_name='Data opuszczenia')
+#
+#     def __str__(self):
+#         return 'Dołączenie do konwersacji {}'.format(self.room.lesson)
+#
+#     class Meta:
+#         verbose_name = 'zapis do konwersacji'
+#         verbose_name_plural = 'Zapisy do konwersacji'
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
