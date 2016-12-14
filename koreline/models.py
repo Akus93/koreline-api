@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+import pusher
 
 
 class UserProfile(models.Model):
@@ -125,4 +126,22 @@ def save_user_profile(sender, instance, **kwargs):
 @receiver(post_delete, sender=UserProfile)
 def post_delete_user(sender, instance, *args, **kwargs):
     instance.user.delete()
+
+
+@receiver(post_save, sender=Room)
+def notify_user_about_room(sender, instance, created, **kwargs):
+    if created:
+        pusher_client = pusher.Pusher(
+            app_id='280178',
+            key='15b5a30c14857f14b7a3',
+            secret='2c00695673458f67097f',
+            cluster='eu',
+            ssl=True
+        )
+        teacher_name = instance.lesson.teacher.user.get_full_name() or instance.teacher.user.username
+        pusher_client.trigger(instance.student.user.username+'-room-invite-channel', 'room-invite-event',
+                              {
+                                  'message': '{} zaprosił Cie do konwersacji.'.format(teacher_name)
+                              })
+
 
