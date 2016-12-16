@@ -5,11 +5,13 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, DestroyAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from uuid import uuid4
+from datetime import timedelta, datetime
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
-from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room
+from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
+    NotificationSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -197,3 +199,13 @@ class ConversationRoomView(APIView):
             return Response(RoomSerializer(conversation_room).data, status=status.HTTP_200_OK)
         else:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+
+class NotificationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        time_threshold = datetime.now() - timedelta(hours=12)
+        notifications = Notification.objects.filter(user=request.user.userprofile, is_read=False,
+                                                    create_date__gt=time_threshold)
+        return Response(NotificationSerializer(notifications, many=True).data, status=status.HTTP_200_OK)

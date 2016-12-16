@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -130,3 +130,11 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = ('lesson', 'student', 'key', 'create_date')
 
+
+class NotificationSerializer(serializers.ModelSerializer):
+    isRead = serializers.BooleanField(source='is_read')
+    createDate = serializers.DateTimeField(source='create_date')
+
+    class Meta:
+        model = Notification
+        fields = ('title', 'text', 'isRead', 'createDate')

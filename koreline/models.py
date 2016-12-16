@@ -20,6 +20,22 @@ class UserProfile(models.Model):
         verbose_name_plural = 'Profile użytkowników'
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
+    title = models.CharField(verbose_name='Tytuł', max_length=128)
+    text = models.CharField(verbose_name='Tekst', max_length=255)
+    is_read = models.BooleanField(verbose_name='Czy odczytane', default=False)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+    def __str__(self):
+        return 'Powiadomienie dla {}'.format(self.user.user.username)
+
+    class Meta:
+        verbose_name = 'Powiadomienie'
+        verbose_name_plural = 'Powiadomienia'
+        ordering = ['-create_date']
+
+
 class Subject(models.Model):
     name = models.CharField(verbose_name='Nazwa', max_length=128)
 
@@ -98,20 +114,6 @@ class Room(models.Model):
         verbose_name_plural = 'Pokoje konwersacji'
 
 
-# class RoomMember(models.Model):
-#     room = models.ForeignKey(Room, verbose_name='Pokój')
-#     member = models.ForeignKey(UserProfile, verbose_name='Uczeń')
-#     join_date = models.DateTimeField(auto_now_add=True, verbose_name='Data dołączenia')
-#     leave_date = models.DateTimeField(verbose_name='Data opuszczenia')
-#
-#     def __str__(self):
-#         return 'Dołączenie do konwersacji {}'.format(self.room.lesson)
-#
-#     class Meta:
-#         verbose_name = 'zapis do konwersacji'
-#         verbose_name_plural = 'Zapisy do konwersacji'
-
-
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -131,6 +133,7 @@ def post_delete_user(sender, instance, *args, **kwargs):
 @receiver(post_save, sender=Room)
 def notify_user_about_room(sender, instance, created, **kwargs):
     if created:
+        # send message about invitation using pusher
         pusher_client = pusher.Pusher(
             app_id='280178',
             key='15b5a30c14857f14b7a3',
@@ -141,7 +144,38 @@ def notify_user_about_room(sender, instance, created, **kwargs):
         teacher_name = instance.lesson.teacher.user.get_full_name() or instance.teacher.user.username
         pusher_client.trigger(instance.student.user.username+'-room-invite-channel', 'room-invite-event',
                               {
-                                  'message': '{} zaprosił Cie do konwersacji.'.format(teacher_name)
+                                  'message': '{} zaprosił Cie do konwersacji.'.format(teacher_name),
+                                  'room': instance.key
                               })
+
+        # create notification about invitation
+        Notification.objects.create(user=instance.student, title='Zaproszenie do konwersacji',
+                                    text='Nauczyciel {} zaprosił Cię do konwersacji dotyczącej lekcji {}.'
+                                    .format(instance.lesson.teacher, instance.lesson))
+
+
+@receiver(post_save, sender=LessonMembership)
+def notify_teacher_about_new_student(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(user=instance.lesson.teacher, title='Nowy uczeń',
+                                    text='Uczeń {} zapisał się do Twojej lekcji {}.'.format(instance.student,
+                                                                                            instance.lesson))
+
+
+@receiver(post_delete, sender=LessonMembership)
+def notify_teacher_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
+    Notification.objects.create(user=instance.lesson.teacher, title='Wypis ucznia',
+                                text='Uczeń {} wypisał się z Twojej lekcji {}.'.format(instance.student,
+                                                                                       instance.lesson))
+
+
+@receiver(post_delete, sender=LessonMembership)
+def notify_student_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
+    Notification.objects.create(user=instance.student, title='Usunięcie z lekcji',
+                                text='Nauczyciel {} wypisał Cię z lekcji {}.'.format(instance.lesson.teacher,
+                                                                                     instance.lesson))
+
+
+
 
 
