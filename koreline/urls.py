@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from koreline.views import UserProfileViewSet, LessonViewSet, CurrentUserView, SubjectsView, StagesView,\
                            LessonStudentsListView, JoinToLessonView, StudentLessonsListView, LeaveLessonView,\
                            UnsubscribeStudentFromLessonView, OpenConversationRoomView, ConversationRoomView, \
-                           NotificationView
+                           NotificationView, MessagesWithUserView, MessagesView
 
 router = DefaultRouter()
 router.register(r'users', UserProfileViewSet)
@@ -30,6 +30,9 @@ urlpatterns = [
     url(r'stages/$', StagesView.as_view()),
 
     url(r'notifications/$', NotificationView.as_view()),
+
+    url(r'messages/(?P<username>[\w]+)/$', MessagesWithUserView.as_view()),
+    url(r'messages/', MessagesView.as_view()),
 
     url(r'^', include(router.urls)),
 ]

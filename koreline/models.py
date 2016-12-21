@@ -36,6 +36,22 @@ class Notification(models.Model):
         ordering = ['-create_date']
 
 
+class Message(models.Model):
+    sender = models.ForeignKey(UserProfile, verbose_name='Nadawca', related_name='senders')
+    reciver = models.ForeignKey(UserProfile, verbose_name='Odbiorca', related_name='recivers')
+    text = models.CharField(verbose_name='Tekst', max_length=255)
+    is_read = models.BooleanField(verbose_name='Czy odczytane', default=False)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+    def __str__(self):
+        return 'Wiadomość od {} do {}'.format(self.sender.user.username, self.reciver.user.username)
+
+    class Meta:
+        verbose_name = 'Wiadomość'
+        verbose_name_plural = 'Wiadomości'
+        ordering = ['-create_date']
+
+
 class Subject(models.Model):
     name = models.CharField(verbose_name='Nazwa', max_length=128)
 
@@ -55,7 +71,7 @@ class Stage(models.Model):
 
     class Meta:
         verbose_name = 'Poziom'
-        verbose_name_plural = 'Poziom'
+        verbose_name_plural = 'Poziomy'
 
 
 class Lesson(models.Model):

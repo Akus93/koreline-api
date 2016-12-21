@@ -6,12 +6,13 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, D
 from django_filters.rest_framework import DjangoFilterBackend
 from uuid import uuid4
 from datetime import timedelta, datetime
+from django.db.models import Q
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
-    NotificationSerializer
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification
+    NotificationSerializer, MessageSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -209,3 +210,41 @@ class NotificationView(APIView):
         notifications = Notification.objects.filter(user=request.user.userprofile, is_read=False,
                                                     create_date__gt=time_threshold)
         return Response(NotificationSerializer(notifications, many=True).data, status=status.HTTP_200_OK)
+
+
+class MessagesWithUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, username, format=None):
+        """Zwraca wszystkie wiadomości z podanym userem"""
+        current_user = request.user.userprofile
+        try:
+            other_user = UserProfile.objects.select_related('user').get(user__username=username)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        messages = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
+                                          Q(sender=other_user) | Q(reciver=other_user))
+        return Response(MessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
+
+
+class MessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        """Tworzy nową wiadomość"""
+
+        reciver_username = request.data.get('reciver', '')
+        text = request.data.get('text', '')
+        try:
+            reciver = UserProfile.objects.get(user__username=reciver_username)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = MessageSerializer(data={'reciver': reciver,
+                                             'sender': request.user.userprofile,
+                                             'text': text})
+        # TODO Ogarnac tworzenie wiadomosci, tu i w serializerze
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

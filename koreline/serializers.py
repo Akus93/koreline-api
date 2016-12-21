@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -138,3 +138,19 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ('title', 'text', 'isRead', 'createDate')
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    isRead = serializers.BooleanField(source='is_read', required=False)
+    createDate = serializers.DateTimeField(source='create_date', required=False)
+    sender = UserProfileSerializer(read_only=True)
+    reciver = UserProfileSerializer(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ('sender', 'reciver', 'text', 'isRead', 'createDate')
+
+    def create(self, validated_data):
+        reciver = validated_data['reciver_user']
+        sender = validated_data['sender_user']
+
