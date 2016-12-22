@@ -233,16 +233,12 @@ class MessagesView(APIView):
     def post(self, request, format=None):
         """Tworzy nową wiadomość"""
 
-        reciver_username = request.data.get('reciver', '')
+        reciver = request.data.get('reciver', '')
         text = request.data.get('text', '')
-        try:
-            reciver = UserProfile.objects.get(user__username=reciver_username)
-        except UserProfile.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = MessageSerializer(data={'reciver': reciver,
-                                             'sender': request.user.userprofile,
+
+        serializer = MessageSerializer(data={'reciver_save': reciver,
+                                             'sender_save': request.user.username,
                                              'text': text})
-        # TODO Ogarnac tworzenie wiadomosci, tu i w serializerze
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

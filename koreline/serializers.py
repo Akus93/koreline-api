@@ -146,11 +146,30 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = UserProfileSerializer(read_only=True)
     reciver = UserProfileSerializer(read_only=True)
 
+    sender_save = serializers.CharField(write_only=True)
+    reciver_save = serializers.CharField(write_only=True)
+
     class Meta:
         model = Message
-        fields = ('sender', 'reciver', 'text', 'isRead', 'createDate')
+        fields = ('sender', 'reciver', 'text', 'isRead', 'createDate', 'sender_save', 'reciver_save')
 
     def create(self, validated_data):
-        reciver = validated_data['reciver_user']
-        sender = validated_data['sender_user']
+        reciver_username = validated_data.pop('reciver_save', None)
+        sender_username = validated_data.pop('sender_save', None)
+
+        try:
+            reciver = UserProfile.objects.get(user__username=reciver_username)
+        except UserProfile.DoesNotExist:
+            raise serializers.ValidationError({'reciver': 'Nie ma takiego użytkownika.'})
+
+        sender = UserProfile.objects.get(user__username=sender_username)
+
+        if reciver.id == sender.id:
+            raise serializers.ValidationError({'reciver': 'Nie można wysłać wiadomości do siebie.'})
+
+        validated_data['reciver'] = reciver
+        validated_data['sender'] = sender
+
+        return super(MessageSerializer, self).create(validated_data)
+
 
