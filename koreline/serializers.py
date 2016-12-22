@@ -151,7 +151,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ('sender', 'reciver', 'text', 'isRead', 'createDate', 'sender_save', 'reciver_save')
+        fields = ('id', 'sender', 'reciver', 'text', 'isRead', 'createDate', 'sender_save', 'reciver_save')
 
     def create(self, validated_data):
         reciver_username = validated_data.pop('reciver_save', None)
@@ -176,4 +176,10 @@ class MessageSerializer(serializers.ModelSerializer):
 class LastMessageSerializer(serializers.Serializer):
     user = UserProfileSerializer(read_only=True)
     message = MessageSerializer(read_only=True)
+
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
 

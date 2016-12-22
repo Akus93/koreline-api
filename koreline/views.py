@@ -230,6 +230,20 @@ class MessagesWithUserView(APIView):
 class MessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get(self, request, format=None):
+        """Zwraca listę osób z ktorymi prowadziliśmy konwersację"""
+        current_user = request.user.userprofile
+        users = UserProfile.objects.select_related('user')\
+                                   .filter(Q(senders__reciver=current_user) | Q(recivers__sender=current_user))\
+                                   .order_by('user__first_name')\
+                                   .distinct()
+        messages = []
+        for user in users:
+            last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
+                                                  Q(sender=user) | Q(reciver=user)).first()
+            messages.append({'user': user, 'message': last_message})
+        return Response(LastMessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
+
     def post(self, request, format=None):
         """Tworzy nową wiadomość"""
 
@@ -245,16 +259,14 @@ class MessagesView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def get(self, request, format=None):
-        """Zwraca listę osób z ktorymi prowadziliśmy konwersację"""
-        current_user = request.user.userprofile
-        users = UserProfile.objects.select_related('user')\
-                                   .filter(Q(senders__reciver=current_user) | Q(recivers__sender=current_user))\
-                                   .order_by('user__first_name')\
-                                   .distinct()
-        messages = []
-        for user in users:
-            last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
-                                                  Q(sender=user) | Q(reciver=user)).first()
-            messages.append({'user': user, 'message': last_message})
-        return Response(LastMessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
+    def put(self, request, format=None):
+        """Ustawia wiadomość na przeczytaną"""
+        pk = request.data.get('id', '')
+        try:
+            message = Message.objects.get(pk=pk, reciver=request.user.userprofile)
+        except Message.DoesNotExist:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        message.is_read = True
+        message.save()
+        return Response(MessageSerializer(message).data, status=status.HTTP_200_OK)
+
