@@ -173,3 +173,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return super(MessageSerializer, self).create(validated_data)
 
 
+class LastMessageSerializer(serializers.Serializer):
+    user = UserProfileSerializer(read_only=True)
+    message = MessageSerializer(read_only=True)
+

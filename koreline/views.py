@@ -11,7 +11,7 @@ from django.db.models import Q
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
-    NotificationSerializer, MessageSerializer
+    NotificationSerializer, MessageSerializer, LastMessageSerializer
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
@@ -244,3 +244,17 @@ class MessagesView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, format=None):
+        """Zwraca listę osób z ktorymi prowadziliśmy konwersację"""
+        current_user = request.user.userprofile
+        users = UserProfile.objects.select_related('user')\
+                                   .filter(Q(senders__reciver=current_user) | Q(recivers__sender=current_user))\
+                                   .order_by('user__first_name')\
+                                   .distinct()
+        messages = []
+        for user in users:
+            last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
+                                                  Q(sender=user) | Q(reciver=user)).first()
+            messages.append({'user': user, 'message': last_message})
+        return Response(LastMessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
