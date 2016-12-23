@@ -157,7 +157,7 @@ def notify_user_about_room(sender, instance, created, **kwargs):
             cluster='eu',
             ssl=True
         )
-        teacher_name = instance.lesson.teacher.user.get_full_name() or instance.teacher.user.username
+        teacher_name = instance.lesson.teacher.user.get_full_name() or instance.lesson.teacher.user.username
         pusher_client.trigger(instance.student.user.username+'-room-invite-channel', 'room-invite-event',
                               {
                                   'message': '{} zaprosił Cie do konwersacji.'.format(teacher_name),

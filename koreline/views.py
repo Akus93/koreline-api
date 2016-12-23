@@ -1,12 +1,15 @@
+from uuid import uuid4
+from datetime import timedelta
+
+from django.utils.timezone import now
+from django.db.models import Q
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView, Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, DestroyAPIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView
 from django_filters.rest_framework import DjangoFilterBackend
-from uuid import uuid4
-from datetime import timedelta, datetime
-from django.db.models import Q
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
@@ -206,7 +209,7 @@ class NotificationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        time_threshold = datetime.now() - timedelta(hours=12)
+        time_threshold = now() - timedelta(hours=12)
         notifications = Notification.objects.filter(user=request.user.userprofile, is_read=False,
                                                     create_date__gt=time_threshold)
         return Response(NotificationSerializer(notifications, many=True).data, status=status.HTTP_200_OK)
