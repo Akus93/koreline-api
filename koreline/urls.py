@@ -31,7 +31,7 @@ urlpatterns = [
 
     url(r'notifications/$', NotificationView.as_view()),
 
-    url(r'messages/(?P<username>[\w]+)/$', MessagesWithUserView.as_view()),
+    url(r'messages/(?P<username>[\w.]+)/$', MessagesWithUserView.as_view()),
     url(r'messages/', MessagesView.as_view()),
 
     url(r'^', include(router.urls)),

@@ -26,6 +26,7 @@ class UserProfileViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnlyForUserProfile]
     http_method_names = ['get', 'patch', 'head', 'delete']
     lookup_field = 'user__username'
+    lookup_value_regex = '[\w.]+'
 
 
 class LessonViewSet(ModelViewSet):
@@ -213,6 +214,17 @@ class NotificationView(APIView):
         notifications = Notification.objects.filter(user=request.user.userprofile, is_read=False,
                                                     create_date__gt=time_threshold)
         return Response(NotificationSerializer(notifications, many=True).data, status=status.HTTP_200_OK)
+
+    def put(self, request, format=None):
+        """Ustawia powiadomienie na przeczytane"""
+        pk = request.data.get('id', '')
+        try:
+            notification = Notification.objects.get(pk=pk, user=request.user.userprofile)
+        except Message.DoesNotExist:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        notification.is_read = True
+        notification.save()
+        return Response(NotificationSerializer(notification).data, status=status.HTTP_200_OK)
 
 
 class MessagesWithUserView(APIView):

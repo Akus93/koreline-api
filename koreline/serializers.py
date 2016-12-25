@@ -36,7 +36,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('user', 'birthDate', 'isTeacher', 'photo', 'tokens')
+        fields = ('user', 'birthDate', 'isTeacher', 'photo', 'tokens', 'headline', 'biography')
 
     def update(self, instance, validated_data):
         try:
@@ -68,7 +68,7 @@ class LessonSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lesson
-        fields = ('title', 'slug', 'subject', 'stage', 'price', 'teacher')
+        fields = ('title', 'slug', 'subject', 'stage', 'price', 'teacher', 'short_description', 'long_description')
 
     def create(self, validated_data):
         subject = validated_data['subject_name']
@@ -137,7 +137,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notification
-        fields = ('title', 'text', 'isRead', 'createDate')
+        fields = ('id', 'title', 'text', 'isRead', 'createDate')
 
 
 class MessageSerializer(serializers.ModelSerializer):

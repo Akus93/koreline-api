@@ -9,8 +9,10 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Użytkownik')
     birth_date = models.DateField(null=True, blank=True, verbose_name='Data urodzenia')
     is_teacher = models.BooleanField(default=False)
-    photo = models.ImageField(upload_to='photos', max_length=255, blank=True)
+    photo = models.ImageField(upload_to='photos', max_length=255, blank=True, null=True)
     tokens = models.PositiveIntegerField(verbose_name="Żetony", default=0)
+    headline = models.CharField(verbose_name='Nagłówek', max_length=70, blank=True, null=True)
+    biography = models.TextField(verbose_name='Biografia', max_length=2048, blank=True, null=True)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
@@ -78,6 +80,8 @@ class Lesson(models.Model):
     teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel')
     title = models.CharField(verbose_name='Tytuł', max_length=255)
     subject = models.ForeignKey(Subject, verbose_name='Przedmiot')
+    short_description = models.CharField(verbose_name='Krótki opis', max_length=255)
+    long_description = models.TextField(verbose_name='Długi opis', max_length=2048)
     slug = models.SlugField(unique=True)
     price = models.PositiveSmallIntegerField(verbose_name='Cena za 15min')
     stage = models.ForeignKey(Stage, verbose_name='Poziom')
