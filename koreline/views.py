@@ -206,6 +206,18 @@ class ConversationRoomView(APIView):
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
 
+class ConversationForLessonView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, slug, format=None):
+        try:
+            room = Room.objects.get(Q(student__user=request.user) | Q(lesson__teacher__user=request.user),
+                                    lesson__slug=slug, is_open=True)
+        except Room.DoesNotExist:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(RoomSerializer(room).data, status=status.HTTP_200_OK)
+
+
 class NotificationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -242,6 +254,15 @@ class MessagesWithUserView(APIView):
         return Response(MessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
 
 
+class UnreadMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """Zwraca listę nieprzeczytanych wiadomości"""
+        unread_messages = Message.objects.filter(reciver__user=request.user, is_read=False)
+        return Response(MessageSerializer(unread_messages, many=True).data, status=status.HTTP_200_OK)
+
+
 class MessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -252,22 +273,23 @@ class MessagesView(APIView):
                                    .filter(Q(senders__reciver=current_user) | Q(recivers__sender=current_user))\
                                    .order_by('user__first_name')\
                                    .distinct()
-        messages = []
-        for user in users:
-            last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
-                                                  Q(sender=user) | Q(reciver=user)).first()
-            messages.append({'user': user, 'message': last_message})
-        return Response(LastMessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
+        # messages = []
+        # for user in users:
+        #     last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
+        #                                           Q(sender=user) | Q(reciver=user)).first()
+        #     messages.append({'user': user, 'message': last_message})
+        return Response(UserProfileSerializer(users, many=True).data, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
         """Tworzy nową wiadomość"""
 
         reciver = request.data.get('reciver', '')
+        title = request.data.get('title', '')
         text = request.data.get('text', '')
 
         serializer = MessageSerializer(data={'reciver_save': reciver,
                                              'sender_save': request.user.username,
-                                             'text': text})
+                                             'text': text, 'title': title})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

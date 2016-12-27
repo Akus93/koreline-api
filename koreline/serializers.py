@@ -65,10 +65,12 @@ class LessonSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(read_only=True)
     subject = serializers.CharField(source='subject_name')
     stage = serializers.CharField(source='stage_name')
+    shortDescription = serializers.CharField(source='short_description')
+    longDescription = serializers.CharField(source='long_description')
 
     class Meta:
         model = Lesson
-        fields = ('title', 'slug', 'subject', 'stage', 'price', 'teacher', 'short_description', 'long_description')
+        fields = ('title', 'slug', 'subject', 'stage', 'price', 'teacher', 'shortDescription', 'longDescription')
 
     def create(self, validated_data):
         subject = validated_data['subject_name']
@@ -151,7 +153,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ('id', 'sender', 'reciver', 'text', 'isRead', 'createDate', 'sender_save', 'reciver_save')
+        fields = ('id', 'sender', 'reciver', 'title', 'text', 'isRead', 'createDate', 'sender_save', 'reciver_save')
 
     def create(self, validated_data):
         reciver_username = validated_data.pop('reciver_save', None)

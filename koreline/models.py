@@ -41,7 +41,8 @@ class Notification(models.Model):
 class Message(models.Model):
     sender = models.ForeignKey(UserProfile, verbose_name='Nadawca', related_name='senders')
     reciver = models.ForeignKey(UserProfile, verbose_name='Odbiorca', related_name='recivers')
-    text = models.CharField(verbose_name='Tekst', max_length=255)
+    title = models.CharField(verbose_name='Tytuł', max_length=64)
+    text = models.TextField(verbose_name='Tekst', max_length=1024)
     is_read = models.BooleanField(verbose_name='Czy odczytane', default=False)
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
 
@@ -78,7 +79,7 @@ class Stage(models.Model):
 
 class Lesson(models.Model):
     teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel')
-    title = models.CharField(verbose_name='Tytuł', max_length=255)
+    title = models.CharField(verbose_name='Tytuł', max_length=64)
     subject = models.ForeignKey(Subject, verbose_name='Przedmiot')
     short_description = models.CharField(verbose_name='Krótki opis', max_length=255)
     long_description = models.TextField(verbose_name='Długi opis', max_length=2048)
@@ -185,15 +186,14 @@ def notify_teacher_about_new_student(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=LessonMembership)
 def notify_teacher_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
     Notification.objects.create(user=instance.lesson.teacher, title='Wypis ucznia',
-                                text='Uczeń {} wypisał się z Twojej lekcji {}.'.format(instance.student,
+                                text='Uczeń {} został wypisany z Twojej lekcji {}.'.format(instance.student,
                                                                                        instance.lesson))
 
 
 @receiver(post_delete, sender=LessonMembership)
 def notify_student_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
     Notification.objects.create(user=instance.student, title='Usunięcie z lekcji',
-                                text='Nauczyciel {} wypisał Cię z lekcji {}.'.format(instance.lesson.teacher,
-                                                                                     instance.lesson))
+                                text='Wypisano Cię z lekcji {}.'.format(instance.lesson))
 
 
 
