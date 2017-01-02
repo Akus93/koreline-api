@@ -23,9 +23,21 @@ class UserProfile(models.Model):
 
 
 class Notification(models.Model):
+    INVITE = 'INVITE'
+    TEACHER_UNSUBSCRIBE = 'TEACHER_UNSUBSCRIBE'
+    STUDENT_UNSUBSCRIBE = 'STUDENT_UNSUBSCRIBE'
+    SUBSCRIBE = 'SUBSCRIBE'
+    NOTIFICATION_TYPES = (
+        (INVITE, 'INVITE'),
+        (TEACHER_UNSUBSCRIBE, 'TEACHER_UNSUBSCRIBE'),
+        (STUDENT_UNSUBSCRIBE, 'STUDENT_UNSUBSCRIBE'),
+        (SUBSCRIBE, 'SUBSCRIBE')
+    )
     user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
     title = models.CharField(verbose_name='Tytuł', max_length=128)
     text = models.CharField(verbose_name='Tekst', max_length=255)
+    type = models.CharField(verbose_name='Typ', choices=NOTIFICATION_TYPES, max_length=32)
+    data = models.CharField(verbose_name='Dane', max_length=64, blank=True, null=True)
     is_read = models.BooleanField(verbose_name='Czy odczytane', default=False)
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
 
@@ -154,7 +166,6 @@ def post_delete_user(sender, instance, *args, **kwargs):
 @receiver(post_save, sender=Room)
 def notify_user_about_room(sender, instance, created, **kwargs):
     if created:
-        # send message about invitation using pusher
         pusher_client = pusher.Pusher(
             app_id='280178',
             key='15b5a30c14857f14b7a3',
@@ -169,8 +180,8 @@ def notify_user_about_room(sender, instance, created, **kwargs):
                                   'room': instance.key
                               })
 
-        # create notification about invitation
-        Notification.objects.create(user=instance.student, title='Zaproszenie do konwersacji',
+        Notification.objects.create(user=instance.student, title='Zaproszenie do konwersacji', type=Notification.INVITE,
+                                    data=instance.key,
                                     text='Nauczyciel {} zaprosił Cię do konwersacji dotyczącej lekcji {}.'
                                     .format(instance.lesson.teacher, instance.lesson))
 
@@ -178,7 +189,8 @@ def notify_user_about_room(sender, instance, created, **kwargs):
 @receiver(post_save, sender=LessonMembership)
 def notify_teacher_about_new_student(sender, instance, created, **kwargs):
     if created:
-        Notification.objects.create(user=instance.lesson.teacher, title='Nowy uczeń',
+        Notification.objects.create(user=instance.lesson.teacher, title='Nowy uczeń', type=Notification.SUBSCRIBE,
+                                    data=instance.student.user.username,
                                     text='Uczeń {} zapisał się do Twojej lekcji {}.'.format(instance.student,
                                                                                             instance.lesson))
 
@@ -186,13 +198,15 @@ def notify_teacher_about_new_student(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=LessonMembership)
 def notify_teacher_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
     Notification.objects.create(user=instance.lesson.teacher, title='Wypis ucznia',
+                                type=Notification.TEACHER_UNSUBSCRIBE,
                                 text='Uczeń {} został wypisany z Twojej lekcji {}.'.format(instance.student,
-                                                                                       instance.lesson))
+                                                                                           instance.lesson))
 
 
 @receiver(post_delete, sender=LessonMembership)
 def notify_student_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
     Notification.objects.create(user=instance.student, title='Usunięcie z lekcji',
+                                type=Notification.STUDENT_UNSUBSCRIBE,
                                 text='Wypisano Cię z lekcji {}.'.format(instance.lesson))
 
 
