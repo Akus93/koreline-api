@@ -1,4 +1,5 @@
 koreline/migrations/
+uploads
 .idea
 __pycache__/
 *.py[cod]
