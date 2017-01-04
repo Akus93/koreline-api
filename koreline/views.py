@@ -307,3 +307,23 @@ class MessagesView(APIView):
         message.save()
         return Response(MessageSerializer(message).data, status=status.HTTP_200_OK)
 
+
+class CommentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        """Tworzy nowy komentarz"""
+
+        reciver = request.data.get('reciver', '')
+        title = request.data.get('title', '')
+        text = request.data.get('text', '')
+
+        serializer = MessageSerializer(data={'reciver_save': reciver,
+                                             'sender_save': request.user.username,
+                                             'text': text, 'title': title})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

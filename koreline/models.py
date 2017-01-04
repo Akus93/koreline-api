@@ -147,6 +147,37 @@ class Room(models.Model):
         verbose_name_plural = 'Pokoje konwersacji'
 
 
+class Comment(models.Model):
+    author = models.ForeignKey(UserProfile, verbose_name='Autor', related_name='author')
+    teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel', related_name='teacher')
+    text = models.CharField(verbose_name='Tekst', max_length=255)
+    rate = models.SmallIntegerField(verbose_name='Ocena')
+    is_active = models.BooleanField(verbose_name='Czy aktywny', default=True)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+    def __str__(self):
+        return 'Komentarz {} o {}'.format(self.author, self.teacher)
+
+    class Meta:
+        verbose_name = 'komentarz'
+        verbose_name_plural = 'Komentarze'
+
+
+class RaportedComment(models.Model):
+    author = models.ForeignKey(UserProfile, verbose_name='Autor zgłoszenia')
+    comment = models.ForeignKey(Comment, verbose_name='Komentarz')
+    text = models.CharField(verbose_name='Tekst zgłoszenia', max_length=255)
+    is_pending = models.BooleanField(verbose_name='Czy oczekujący', default=True)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+    def __str__(self):
+        return 'Zgłoszenie komentarza {}'.format(self.comment)
+
+    class Meta:
+        verbose_name = 'zgłoszenie komentarza'
+        verbose_name_plural = 'Zgłoszone komentarze'
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:

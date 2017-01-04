@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -184,4 +184,36 @@ class LastMessageSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         pass
+
+
+class CommentSerizalizer(serializers.ModelSerializer):
+    createDate = serializers.DateTimeField(source='create_date', required=False)
+    author = UserProfileSerializer(read_only=True)
+    teacher = UserProfileSerializer(read_only=True)
+
+    author_save = serializers.CharField(write_only=True)
+    teacher_save = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('author', 'teacher', 'text', 'rate', 'create_date', 'author_save', 'teacher_save')
+
+    def create(self, validated_data):
+        author_username = validated_data.pop('author_save', None)
+        teacher_username = validated_data.pop('teacher_save', None)
+
+        try:
+            teacher = UserProfile.objects.get(user__username=teacher_username)
+        except UserProfile.DoesNotExist:
+            raise serializers.ValidationError({'teacher': 'Nie ma takiego użytkownika.'})
+
+        author = UserProfile.objects.get(user__username=author_username)
+
+        if teacher.id == author.id:
+            raise serializers.ValidationError({'teacher': 'Nie można oceniać swojego profilu.'})
+
+        validated_data['author'] = author
+        validated_data['teacher'] = teacher
+
+        return super(CommentSerizalizer, self).create(validated_data)
 
