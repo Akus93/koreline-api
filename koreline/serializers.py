@@ -187,7 +187,7 @@ class LastMessageSerializer(serializers.Serializer):
 
 
 class CommentSerizalizer(serializers.ModelSerializer):
-    createDate = serializers.DateTimeField(source='create_date', required=False)
+    createDate = serializers.DateTimeField(source='create_date', read_only=True)
     author = UserProfileSerializer(read_only=True)
     teacher = UserProfileSerializer(read_only=True)
 
@@ -196,7 +196,7 @@ class CommentSerizalizer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('author', 'teacher', 'text', 'rate', 'create_date', 'author_save', 'teacher_save')
+        fields = ('author', 'teacher', 'text', 'rate', 'createDate', 'author_save', 'teacher_save')
 
     def create(self, validated_data):
         author_username = validated_data.pop('author_save', None)

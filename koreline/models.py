@@ -151,7 +151,7 @@ class Comment(models.Model):
     author = models.ForeignKey(UserProfile, verbose_name='Autor', related_name='author')
     teacher = models.ForeignKey(UserProfile, verbose_name='Nauczyciel', related_name='teacher')
     text = models.CharField(verbose_name='Tekst', max_length=255)
-    rate = models.SmallIntegerField(verbose_name='Ocena')
+    rate = models.SmallIntegerField(verbose_name='Ocena', choices=[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5)])
     is_active = models.BooleanField(verbose_name='Czy aktywny', default=True)
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
 

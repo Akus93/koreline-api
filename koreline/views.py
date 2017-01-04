@@ -14,8 +14,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
-    NotificationSerializer, MessageSerializer, LastMessageSerializer
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message
+    NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -308,22 +308,34 @@ class MessagesView(APIView):
         return Response(MessageSerializer(message).data, status=status.HTTP_200_OK)
 
 
-class CommentView(APIView):
+class CreateCommentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
         """Tworzy nowy komentarz"""
 
-        reciver = request.data.get('reciver', '')
-        title = request.data.get('title', '')
+        teacher = request.data.get('teacher', '')
         text = request.data.get('text', '')
+        rate = request.data.get('rate', '')
 
-        serializer = MessageSerializer(data={'reciver_save': reciver,
-                                             'sender_save': request.user.username,
-                                             'text': text, 'title': title})
+        serializer = CommentSerizalizer(data={'teacher_save': teacher,
+                                              'author_save': request.user.username,
+                                              'text': text, 'rate': rate})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class TeacherCommentsView(APIView):
+
+    def get(self, request, teacher, format=None):
+
+        try:
+            teacher = UserProfile.objects.get(user__username=teacher, is_teacher=True)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        comments = Comment.objects.filter(teacher=teacher, is_active=True)
+        return Response(CommentSerizalizer(comments, many=True).data, status=status.HTTP_200_OK)
