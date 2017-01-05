@@ -6,7 +6,8 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message,\
+                            Comment, ReportedComment
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -196,7 +197,7 @@ class CommentSerizalizer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('author', 'teacher', 'text', 'rate', 'createDate', 'author_save', 'teacher_save')
+        fields = ('id', 'author', 'teacher', 'text', 'rate', 'createDate', 'author_save', 'teacher_save')
 
     def create(self, validated_data):
         author_username = validated_data.pop('author_save', None)
@@ -216,4 +217,36 @@ class CommentSerizalizer(serializers.ModelSerializer):
         validated_data['teacher'] = teacher
 
         return super(CommentSerizalizer, self).create(validated_data)
+
+
+class ReportedCommentSerizalizer(serializers.ModelSerializer):
+    createDate = serializers.DateTimeField(source='create_date', read_only=True)
+    author = UserProfileSerializer(read_only=True)
+    comment = CommentSerizalizer(read_only=True)
+
+    author_save = serializers.CharField(write_only=True)
+    comment_save = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = ReportedComment
+        fields = ('author', 'comment', 'text', 'createDate', 'author_save', 'comment_save')
+
+    def create(self, validated_data):
+        author_username = validated_data.pop('author_save', None)
+        comment_id = validated_data.pop('comment_save', None)
+
+        try:
+            comment = Comment.objects.get(id=comment_id, is_active=True)
+        except Comment.DoesNotExist:
+            raise serializers.ValidationError({'comment': 'Nie ma takiego komentarza.'})
+
+        author = UserProfile.objects.get(user__username=author_username)
+
+        if ReportedComment.objects.filter(comment=comment, author=author).count():
+            raise serializers.ValidationError({'comment': 'Już zgłosiłeś/aś ten komentarz.'})
+
+        validated_data['author'] = author
+        validated_data['comment'] = comment
+
+        return super(ReportedCommentSerizalizer, self).create(validated_data)
 

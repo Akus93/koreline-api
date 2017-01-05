@@ -14,7 +14,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
-    NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer
+    NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer, ReportedCommentSerizalizer
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
@@ -339,3 +339,21 @@ class TeacherCommentsView(APIView):
 
         comments = Comment.objects.filter(teacher=teacher, is_active=True)
         return Response(CommentSerizalizer(comments, many=True).data, status=status.HTTP_200_OK)
+
+
+class ReportCommentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        """Tworzy nowe zgłoszenie komentarza"""
+
+        text = request.data.get('text', '')
+        comment = request.data.get('comment', '')
+
+        serializer = ReportedCommentSerizalizer(data={'comment_save': comment, 'author_save': request.user.username,
+                                                      'text': text})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

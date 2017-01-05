@@ -5,7 +5,7 @@ from koreline.views import UserProfileViewSet, LessonViewSet, CurrentUserView, S
                            LessonStudentsListView, JoinToLessonView, StudentLessonsListView, LeaveLessonView,\
                            UnsubscribeStudentFromLessonView, OpenConversationRoomView, ConversationRoomView, \
                            NotificationView, MessagesWithUserView, MessagesView, UnreadMessagesView,\
-                           ConversationForLessonView, CreateCommentView, TeacherCommentsView
+                           ConversationForLessonView, CreateCommentView, TeacherCommentsView, ReportCommentView
 
 router = DefaultRouter()
 router.register(r'users', UserProfileViewSet)
@@ -38,6 +38,7 @@ urlpatterns = [
     url(r'messages/$', MessagesView.as_view()),
 
     url(r'comments/create/$', CreateCommentView.as_view()),
+    url(r'comments/report/$', ReportCommentView.as_view()),
     url(r'comments/(?P<teacher>[\w.]+)/$', TeacherCommentsView.as_view()),
 
     url(r'^', include(router.urls)),

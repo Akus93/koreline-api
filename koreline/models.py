@@ -27,11 +27,13 @@ class Notification(models.Model):
     TEACHER_UNSUBSCRIBE = 'TEACHER_UNSUBSCRIBE'
     STUDENT_UNSUBSCRIBE = 'STUDENT_UNSUBSCRIBE'
     SUBSCRIBE = 'SUBSCRIBE'
+    COMMENT = 'COMMENT'
     NOTIFICATION_TYPES = (
         (INVITE, 'INVITE'),
         (TEACHER_UNSUBSCRIBE, 'TEACHER_UNSUBSCRIBE'),
         (STUDENT_UNSUBSCRIBE, 'STUDENT_UNSUBSCRIBE'),
-        (SUBSCRIBE, 'SUBSCRIBE')
+        (SUBSCRIBE, 'SUBSCRIBE'),
+        (COMMENT, 'COMMENT')
     )
     user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
     title = models.CharField(verbose_name='Tytuł', max_length=128)
@@ -163,7 +165,7 @@ class Comment(models.Model):
         verbose_name_plural = 'Komentarze'
 
 
-class RaportedComment(models.Model):
+class ReportedComment(models.Model):
     author = models.ForeignKey(UserProfile, verbose_name='Autor zgłoszenia')
     comment = models.ForeignKey(Comment, verbose_name='Komentarz')
     text = models.CharField(verbose_name='Tekst zgłoszenia', max_length=255)
@@ -241,6 +243,11 @@ def notify_student_about_unsubscribe_from_lesson(sender, instance, *args, **kwar
                                 text='Wypisano Cię z lekcji {}.'.format(instance.lesson))
 
 
+@receiver(post_save, sender=Comment)
+def notify_teacher_about_new_comment(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(user=instance.teacher, title='Nowy komentarz', type=Notification.COMMENT,
+                                    text='Użytkownik {} wystawił Ci opinie.'.format(instance.author))
 
 
 
