@@ -139,7 +139,7 @@ class Room(models.Model):
     key = models.CharField(verbose_name='Klucz', max_length=100, unique=True)
     is_open = models.BooleanField(default=True, verbose_name='Czy otwarty')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
-    close_date = models.DateTimeField(auto_now_add=True, verbose_name='Data zamknięcia')
+    close_date = models.DateTimeField(verbose_name='Data zamknięcia', blank=True, null=True)
 
     def __str__(self):
         return 'Pokój konwersacji {}'.format(self.lesson)
@@ -248,6 +248,3 @@ def notify_teacher_about_new_comment(sender, instance, created, **kwargs):
     if created:
         Notification.objects.create(user=instance.teacher, title='Nowy komentarz', type=Notification.COMMENT,
                                     text='Użytkownik {} wystawił Ci opinie.'.format(instance.author))
-
-
-

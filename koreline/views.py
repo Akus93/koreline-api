@@ -190,20 +190,43 @@ class OpenConversationRoomView(APIView):
         return Response(RoomSerializer(room).data, status=status.HTTP_200_OK)
 
 
+class CloseConversationRoomView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def post(self, request, format=None):
+        """Close room"""
+
+        student = request.data.get('student', '')
+
+        teacher = request.user.userprofile
+
+        if not teacher.is_teacher:
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+        conversations = Room.objects.select_related('lesson__teacher', 'student__user')\
+            .filter(lesson__teacher=teacher, student__user__username=student, is_open=True)
+        for conversation in conversations:
+            conversation.is_open = False
+            conversation.close_date = now()
+            conversation.save()
+        return Response({}, status=status.HTTP_200_OK)
+
+
 class ConversationRoomView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, key, format=None):
 
         try:
-            conversation_room = Room.objects.select_related('student__user', 'lesson__teacher__user').get(key=key)
+            conversation_room = Room.objects.select_related('student__user', 'lesson__teacher__user').get(key=key,
+                                                                                                          is_open=True)
         except Room.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
 
         if conversation_room.student.user == request.user or conversation_room.lesson.teacher.user == request.user:
             return Response(RoomSerializer(conversation_room).data, status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class ConversationForLessonView(APIView):
