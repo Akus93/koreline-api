@@ -171,7 +171,9 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'register_view': '4/h',
     },
-    'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',)
+    'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend', ),
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'TEST_REQUEST_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer', ),
 }
 
 # Allauth

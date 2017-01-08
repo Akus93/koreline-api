@@ -1,12 +1,12 @@
 from django.conf.urls import url, include
 from rest_framework.routers import DefaultRouter
 
-from koreline.views import UserProfileViewSet, LessonViewSet, CurrentUserView, SubjectsView, StagesView,\
+from koreline.views import UserProfileViewSet, LessonViewSet, SubjectsView, StagesView,\
                            LessonStudentsListView, JoinToLessonView, StudentLessonsListView, LeaveLessonView,\
                            UnsubscribeStudentFromLessonView, OpenConversationRoomView, ConversationRoomView, \
                            NotificationView, MessagesWithUserView, MessagesView, UnreadMessagesView,\
                            ConversationForLessonView, CreateCommentView, TeacherCommentsView, ReportCommentView,\
-                           CloseConversationRoomView
+                           CloseConversationRoomView, CurrentUserView
 
 router = DefaultRouter()
 router.register(r'users', UserProfileViewSet)
@@ -20,10 +20,8 @@ urlpatterns = [
 
     url(r'teacher/lessons/unsubscribe/$', UnsubscribeStudentFromLessonView.as_view()),
 
-    url(r'user/edit-profile/$', CurrentUserView.as_view()),
+    url(r'user/my-profile/$', CurrentUserView.as_view()),
     url(r'user/my-lessons/$', StudentLessonsListView.as_view()),
-
-    # url(r'teacher/my-lessons/$', TeacherLessonsListView.as_view()),
 
     url(r'room/open/$', OpenConversationRoomView.as_view()),
     url(r'room/close/$', CloseConversationRoomView.as_view()),

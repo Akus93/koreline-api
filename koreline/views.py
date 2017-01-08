@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView, Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
@@ -45,8 +45,8 @@ class LessonViewSet(ModelViewSet):
         user.save()
 
 
-class CurrentUserView(RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsOwnerOrReadOnlyForUserProfile]
+class CurrentUserView(RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = UserProfileSerializer
 
     def get_object(self):
