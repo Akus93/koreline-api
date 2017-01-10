@@ -20,7 +20,7 @@ urlpatterns = [
 
     url(r'teacher/lessons/unsubscribe/$', UnsubscribeStudentFromLessonView.as_view()),
 
-    url(r'user/my-profile/$', CurrentUserView.as_view()),
+    url(r'user/my-profile/$', CurrentUserView.as_view()),  # TESTED
     url(r'user/my-lessons/$', StudentLessonsListView.as_view()),
 
     url(r'room/open/$', OpenConversationRoomView.as_view()),
@@ -28,14 +28,14 @@ urlpatterns = [
     url(r'room/lesson/(?P<slug>[\w-]+)/$', ConversationForLessonView.as_view()),
     url(r'room/(?P<key>[\w]+)/$', ConversationRoomView.as_view()),
 
-    url(r'subjects/$', SubjectsView.as_view()),
-    url(r'stages/$', StagesView.as_view()),
+    url(r'subjects/$', SubjectsView.as_view()),  # TESTED
+    url(r'stages/$', StagesView.as_view()),  # TESTED
 
     url(r'notifications/$', NotificationView.as_view()),
 
-    url(r'messages/unread/$', UnreadMessagesView.as_view()),
-    url(r'messages/(?P<username>[\w.]+)/$', MessagesWithUserView.as_view()),
-    url(r'messages/$', MessagesView.as_view()),
+    url(r'messages/unread/$', UnreadMessagesView.as_view()),  # TESTED
+    url(r'messages/(?P<username>[\w.]+)/$', MessagesWithUserView.as_view()),  # TESTED
+    url(r'messages/$', MessagesView.as_view()),  # TESTED
 
     url(r'comments/create/$', CreateCommentView.as_view()),
     url(r'comments/report/$', ReportCommentView.as_view()),

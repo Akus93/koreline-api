@@ -3,8 +3,8 @@ from django.utils.text import slugify
 from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from koreline.models import UserProfile, Lesson, Subject, Stage
-from koreline.serializers import UserProfileSerializer, LessonSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, Message
+from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer
 
 
 class BaseApiTest(APITestCase):
@@ -253,7 +253,7 @@ class StageTests(BaseApiTest):
         self.assertEqual(response.data[0], self.test_stage.name)
 
 
-class SubjectsTests(BaseApiTest):
+class SubjectTests(BaseApiTest):
 
     def test_get_subjects(self):
         url = '/api/subjects/'
@@ -263,5 +263,112 @@ class SubjectsTests(BaseApiTest):
         self.assertEqual(response.data[0], self.test_subject.name)
 
 
+class MessageTests(BaseApiTest):
 
+    def setUp(self):
+        super(MessageTests, self).setUp()
+        self.test_message = Message.objects.create(reciver=self.test_student, sender=self.test_teacher,
+                                                   title='Test title', text='Test text')
+
+    def test_success_send_message(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/'
+        data = {
+            'reciver': 'teacher',
+            'title': 'Test message title',
+            'text': 'Test message text',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Message.objects.count(), 2)
+        self.assertEqual(response.data, MessageSerializer(Message.objects.first()).data)
+        self.assertEqual(response.data['isRead'], False)
+        self.assertEqual(Message.objects.first().reciver.user.username, self.test_teacher.user.username)
+        self.client.credentials()
+
+    def test_unsuccess_send_message_unauthorized(self):
+        url = '/api/messages/'
+        data = {
+            'reciver': 'teacher',
+            'title': 'Test message title',
+            'text': 'Test message text',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Message.objects.count(), 1)
+
+    def test_unsuccess_send_message_to_self(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/'
+        data = {
+            'reciver': 'student',
+            'title': 'Test message title',
+            'text': 'Test message text',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue('reciver' in response.data)
+        self.assertEqual(Message.objects.count(), 1)
+        self.client.credentials()
+
+    def test_success_get_interlocutors(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(isinstance(response.data, list))
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0], UserProfileSerializer(self.test_teacher).data)
+        self.client.credentials()
+
+    def test_success_mark_as_read(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/'
+        response = self.client.put(url, {'id': self.test_message.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['isRead'], True)
+        self.assertEqual(Message.objects.first().is_read, True)
+        self.client.credentials()
+
+    def test_unsuccess_mark_as_read_by_non_reciver(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/messages/'
+        response = self.client.put(url, {'id': self.test_message.id})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(Message.objects.first().is_read, False)
+        self.client.credentials()
+
+    def test_success_get_unread_messages(self):
+        Message.objects.create(reciver=self.test_student, sender=self.test_teacher, title='Title', text='Text',
+                               is_read=True)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/unread/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, MessageSerializer(Message.objects.filter(reciver__user__username='student',
+                                                                                 is_read=False), many=True).data)
+        self.client.credentials()
+
+    def test_success_get_messages_with_user(self):
+        Message.objects.create(reciver=self.test_teacher, sender=self.test_student, title='Title', text='Text')
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/{}/'.format(self.test_teacher.user.username)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.client.credentials()
+
+    def test_unsuccess_get_messages_with_user_does_not_exist(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/messages/{}/'.format('none.existing')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.client.credentials()
+
+    def test_unsuccess_get_messages_with_user_unauthorized(self):
+        url = '/api/messages/{}/'.format('teacher')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+# TODO Notifications, LessonMembership, Room, Comment, ReportedComment
 
