@@ -23,10 +23,10 @@ urlpatterns = [
     url(r'user/my-profile/$', CurrentUserView.as_view()),  # TESTED
     url(r'user/my-lessons/$', StudentLessonsListView.as_view()),  # TESTED
 
-    url(r'room/open/$', OpenConversationRoomView.as_view()),
-    url(r'room/close/$', CloseConversationRoomView.as_view()),
-    url(r'room/lesson/(?P<slug>[\w-]+)/$', ConversationForLessonView.as_view()),
-    url(r'room/(?P<key>[\w]+)/$', ConversationRoomView.as_view()),
+    url(r'room/open/$', OpenConversationRoomView.as_view()),  # TESTED
+    url(r'room/close/$', CloseConversationRoomView.as_view()),  # TESTED
+    url(r'room/lesson/(?P<slug>[\w-]+)/$', ConversationForLessonView.as_view()),  # TESTED
+    url(r'room/(?P<key>[\w]+)/$', ConversationRoomView.as_view()),  # TESTED
 
     url(r'subjects/$', SubjectsView.as_view()),  # TESTED
     url(r'stages/$', StagesView.as_view()),  # TESTED

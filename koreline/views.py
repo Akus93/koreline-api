@@ -171,7 +171,7 @@ class OpenConversationRoomView(APIView):
 
         try:
             lesson = Lesson.objects.get(slug=slug)
-        except UserProfile.DoesNotExist:
+        except Lesson.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         if lesson.teacher.user != request.user:
@@ -197,11 +197,7 @@ class CloseConversationRoomView(APIView):
         """Close room"""
 
         student = request.data.get('student', '')
-
         teacher = request.user.userprofile
-
-        if not teacher.is_teacher:
-            return Response({}, status=status.HTTP_204_NO_CONTENT)
 
         conversations = Room.objects.select_related('lesson__teacher', 'student__user')\
             .filter(lesson__teacher=teacher, student__user__username=student, is_open=True)

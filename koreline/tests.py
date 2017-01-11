@@ -3,8 +3,8 @@ from django.utils.text import slugify
 from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership
-from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership, Room
+from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer, RoomSerializer
 
 
 class BaseApiTest(APITestCase):
@@ -585,8 +585,233 @@ class LessonMembershipTests(BaseApiTest):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class RoomTests(BaseApiTest):
+
+    def setUp(self):
+        super(RoomTests, self).setUp()
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+
+    def test_success_open_room(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/room/open/'
+        data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+        self.assertEqual(Room.objects.first().is_open, True)
+        self.assertEqual(response.data, RoomSerializer(Room.objects.first()).data)
+        self.client.credentials()
+
+    def test_unsuccess_open_room_unknown_lesson(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/room/open/'
+        data = {
+            'lesson': 'unknown',
+            'student': self.test_membership.student.user.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Room.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_open_room_unknown_student(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/room/open/'
+        data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': 'unknown'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Room.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_open_room_student_not_member(self):
+        new_student = User.objects.create_user(username='new.student', email='new.student@test.com',
+                                               password='asdjndfg')
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/room/open/'
+        data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': new_student.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Room.objects.count(), 0)
+        self.client.credentials()
+
+    def test_success_close_room(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        url = '/api/room/close/'
+        data = {
+            'student': self.test_membership.student.user.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+        self.assertEqual(Room.objects.first().is_open, False)
+        self.client.credentials()
+
+    def test_unsuccess_close_room_not_authorized(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+        self.client.credentials()
+
+        url = '/api/room/close/'
+        data = {
+            'student': self.test_membership.student.user.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Room.objects.count(), 1)
+        self.assertEqual(Room.objects.first().is_open, True)
+        self.client.credentials()
+
+    def test_unsuccess_close_room_not_teacher(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+
+        url = '/api/room/close/'
+        data = {
+            'student': self.test_membership.student.user.username
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Room.objects.count(), 1)
+        self.assertEqual(Room.objects.first().is_open, True)
+        self.client.credentials()
+
+    def test_success_get_room_fom_lesson_by_teacher(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        url = '/api/room/lesson/' + self.test_membership.lesson.slug + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, RoomSerializer(Room.objects.first()).data)
+        self.client.credentials()
+
+    def test_success_get_room_fom_lesson_by_student(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/room/lesson/' + self.test_membership.lesson.slug + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, RoomSerializer(Room.objects.first()).data)
+        self.client.credentials()
+
+    def test_success_get_room_fom_lesson_no_room(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/room/lesson/' + self.test_membership.lesson.slug + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.client.credentials()
+
+    def test_success_get_conversation(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/room/' + Room.objects.first().key + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, RoomSerializer(Room.objects.first()).data)
+        self.client.credentials()
+
+    def test_unsuccess_get_conversation_unauthorized(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        self.client.credentials()
+        url = '/api/room/' + Room.objects.first().key + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unsuccess_get_conversation_non_exist(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/room/' + 'unknown' + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.client.credentials()
+
+    def test_unsuccess_get_conversation_not_teacher_and_not_student(self):
+        new_student = User.objects.create_user(username='new.student', email='new.student@test.com',
+                                               password='asdjndfg')
+        new_student_token = Token.objects.create(user=new_student, key='RANDOMnewstudentTOKEN')
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        open_url = '/api/room/open/'
+        open_data = {
+            'lesson': self.test_membership.lesson.slug,
+            'student': self.test_membership.student.user.username
+        }
+        open_response = self.client.post(open_url, open_data)
+        self.assertEqual(open_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Room.objects.count(), 1)
+
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + new_student_token.key)
+        url = '/api/room/' + Room.objects.first().key + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.client.credentials()
 
 
-
-# TODO Notifications, Room, Comment, ReportedComment
+# TODO Notifications, Comment, ReportedComment
 
