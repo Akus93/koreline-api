@@ -3,8 +3,10 @@ from django.utils.text import slugify
 from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership, Room
-from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer, RoomSerializer
+from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership, Room, Comment, \
+                            ReportedComment, Notification
+from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer, RoomSerializer,\
+                                 CommentSerizalizer, ReportedCommentSerizalizer, NotificationSerializer
 
 
 class BaseApiTest(APITestCase):
@@ -384,6 +386,12 @@ class LessonMembershipTests(BaseApiTest):
         self.assertEqual(LessonMembership.objects.count(), 1)
         self.assertEqual(LessonMembership.objects.first().student, self.test_student)
         self.assertEqual(LessonMembership.objects.first().lesson, self.test_lesson)
+
+        self.assertEqual(Notification.objects.count(), 1)
+        self.assertEqual(Notification.objects.first().type, 'SUBSCRIBE')
+        self.assertEqual(Notification.objects.first().user, self.test_teacher)
+        self.assertEqual(Notification.objects.first().data, self.test_student.user.username)
+
         self.client.credentials()
 
     def test_unsuccess_join_to_lesson_unauthorized(self):
@@ -536,6 +544,11 @@ class LessonMembershipTests(BaseApiTest):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(LessonMembership.objects.count(), 0)
+
+        self.assertEqual(Notification.objects.count(), 3)
+        self.assertTrue(Notification.objects.filter(user=self.test_student, type='STUDENT_UNSUBSCRIBE').exists())
+        self.assertTrue(Notification.objects.filter(user=self.test_teacher, type='TEACHER_UNSUBSCRIBE').exists())
+
         self.client.credentials()
 
     def test_unsuccess_unsubscribe_student_from_lesson_unknown_student(self):
@@ -603,6 +616,11 @@ class RoomTests(BaseApiTest):
         self.assertEqual(Room.objects.count(), 1)
         self.assertEqual(Room.objects.first().is_open, True)
         self.assertEqual(response.data, RoomSerializer(Room.objects.first()).data)
+
+        notifications = Notification.objects.filter(user=self.test_student)
+        self.assertEqual(len(notifications), 1)
+        self.assertEqual(notifications[0].type, 'INVITE')
+        self.assertEqual(notifications[0].is_read, False)
         self.client.credentials()
 
     def test_unsuccess_open_room_unknown_lesson(self):
@@ -665,7 +683,7 @@ class RoomTests(BaseApiTest):
         self.assertEqual(Room.objects.first().is_open, False)
         self.client.credentials()
 
-    def test_unsuccess_close_room_not_authorized(self):
+    def test_unsuccess_close_room_unauthorized(self):
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
         open_url = '/api/room/open/'
         open_data = {
@@ -813,5 +831,148 @@ class RoomTests(BaseApiTest):
         self.client.credentials()
 
 
-# TODO Notifications, Comment, ReportedComment
+class CommentTests(BaseApiTest):
 
+    def test_success_create_comment(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/comments/create/'
+        data = {
+            'teacher': self.test_teacher.user.username,
+            'text': 'Test comment',
+            'rate': 4
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertEqual(response.data, CommentSerizalizer(Comment.objects.first()).data)
+
+        self.assertEqual(Notification.objects.count(), 1)
+        self.assertEqual(Notification.objects.first().type, 'COMMENT')
+        self.assertEqual(Notification.objects.first().user, self.test_teacher)
+
+        self.client.credentials()
+
+    def test_unsuccess_create_comment_unauthorized(self):
+        url = '/api/comments/create/'
+        data = {
+            'teacher': self.test_teacher.user.username,
+            'text': 'Test comment',
+            'rate': 4
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Comment.objects.count(), 0)
+
+    def test_unsuccess_create_comment_to_self(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/comments/create/'
+        data = {
+            'teacher': self.test_teacher.user.username,
+            'text': 'Test comment',
+            'rate': 4
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Comment.objects.count(), 0)
+        self.assertTrue('teacher' in response.data)
+        self.client.credentials()
+
+    def test_success_get_comments_about_teacher(self):
+        Comment.objects.create(author=self.test_student, teacher=self.test_teacher, text='Test text', rate=4)
+        self.assertEqual(Comment.objects.count(), 1)
+        url = '/api/comments/' + self.test_teacher.user.username + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(isinstance(response.data, list))
+        self.assertEqual(response.data, CommentSerizalizer(Comment.objects.filter(teacher=self.test_teacher),
+                                                           many=True).data)
+
+    def test_unsuccess_get_comments_about_teacher_unknown(self):
+        Comment.objects.create(author=self.test_student, teacher=self.test_teacher, text='Test text', rate=4)
+        self.assertEqual(Comment.objects.count(), 1)
+        url = '/api/comments/' + 'unknown' + '/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_success_report_comment(self):
+        comment = Comment.objects.create(author=self.test_student, teacher=self.test_teacher, text='Test text', rate=4)
+        self.assertEqual(Comment.objects.count(), 1)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/comments/report/'
+        data = {
+            'comment': comment.id,
+            'text': 'Test report comment',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(ReportedComment.objects.count(), 1)
+        self.assertTrue(response.data, ReportedCommentSerizalizer(ReportedComment.objects.first()).data)
+        self.assertEqual(ReportedComment.objects.first().is_pending, True)
+        self.client.credentials()
+
+    def test_unsuccess_report_comment_unauthorized(self):
+        comment = Comment.objects.create(author=self.test_student, teacher=self.test_teacher, text='Test text', rate=4)
+        self.assertEqual(Comment.objects.count(), 1)
+        url = '/api/comments/report/'
+        data = {
+            'comment': comment.id,
+            'text': 'Test report comment',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(ReportedComment.objects.count(), 0)
+
+    def test_unsuccess_report_comment_multiple(self):
+        test_comment = Comment.objects.create(author=self.test_student, teacher=self.test_teacher, text='Text', rate=4)
+        self.assertEqual(Comment.objects.count(), 1)
+        ReportedComment.objects.create(author=self.test_teacher, comment=test_comment, text='Test')
+        self.assertEqual(ReportedComment.objects.count(), 1)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/comments/report/'
+        data = {
+            'comment': test_comment.id,
+            'text': 'Test report comment',
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue('comment' in response.data)
+        self.client.credentials()
+
+
+class NotificationTests(BaseApiTest):
+
+    def setUp(self):
+        super(NotificationTests, self).setUp()
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+
+    def test_success_get_last_unread_notifications(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/notifications/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(isinstance(response.data, list))
+        self.assertEqual(response.data[0]['type'], 'SUBSCRIBE')
+        self.assertEqual(response.data[0]['isRead'], False)
+        self.client.credentials()
+
+    def test_unsuccess_get_last_unread_notifications_unauthorized(self):
+        url = '/api/notifications/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_success_mark_notification_as_read(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/notifications/'
+        response = self.client.put(url, {'id': Notification.objects.first().id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data, NotificationSerializer(Notification.objects.first()).data)
+        self.assertEqual(response.data['isRead'], True)
+        self.assertEqual(Notification.objects.first().is_read, True)
+        self.client.credentials()
+
+    def test_unsuccess_mark_notification_as_read_unknow(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/notifications/'
+        response = self.client.put(url, {'id': 42})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.client.credentials()

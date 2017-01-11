@@ -251,8 +251,8 @@ class NotificationView(APIView):
         pk = request.data.get('id', '')
         try:
             notification = Notification.objects.get(pk=pk, user=request.user.userprofile)
-        except Message.DoesNotExist:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        except Notification.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         notification.is_read = True
         notification.save()
         return Response(NotificationSerializer(notification).data, status=status.HTTP_200_OK)

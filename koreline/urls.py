@@ -37,9 +37,9 @@ urlpatterns = [
     url(r'messages/(?P<username>[\w.]+)/$', MessagesWithUserView.as_view()),  # TESTED
     url(r'messages/$', MessagesView.as_view()),  # TESTED
 
-    url(r'comments/create/$', CreateCommentView.as_view()),
+    url(r'comments/create/$', CreateCommentView.as_view()),  # TESTED
     url(r'comments/report/$', ReportCommentView.as_view()),
-    url(r'comments/(?P<teacher>[\w.]+)/$', TeacherCommentsView.as_view()),
+    url(r'comments/(?P<teacher>[\w.]+)/$', TeacherCommentsView.as_view()),  # TESTED
 
     url(r'^', include(router.urls)),
 ]
