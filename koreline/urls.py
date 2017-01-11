@@ -14,14 +14,14 @@ router.register(r'lessons', LessonViewSet)
 
 urlpatterns = [
 
-    url(r'lessons/join/$', JoinToLessonView.as_view()),
-    url(r'lessons/leave/$', LeaveLessonView.as_view()),
-    url(r'lessons/(?P<slug>[\w-]+)/members/$', LessonStudentsListView.as_view()),
+    url(r'lessons/join/$', JoinToLessonView.as_view()),  # TESTED
+    url(r'lessons/leave/$', LeaveLessonView.as_view()),  # TESTED
+    url(r'lessons/(?P<slug>[\w-]+)/members/$', LessonStudentsListView.as_view()),  # TESTED
 
-    url(r'teacher/lessons/unsubscribe/$', UnsubscribeStudentFromLessonView.as_view()),
+    url(r'teacher/lessons/unsubscribe/$', UnsubscribeStudentFromLessonView.as_view()),  # TESTED
 
     url(r'user/my-profile/$', CurrentUserView.as_view()),  # TESTED
-    url(r'user/my-lessons/$', StudentLessonsListView.as_view()),
+    url(r'user/my-lessons/$', StudentLessonsListView.as_view()),  # TESTED
 
     url(r'room/open/$', OpenConversationRoomView.as_view()),
     url(r'room/close/$', CloseConversationRoomView.as_view()),
