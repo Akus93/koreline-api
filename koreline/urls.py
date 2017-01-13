@@ -6,7 +6,8 @@ from koreline.views import UserProfileViewSet, LessonViewSet, SubjectsView, Stag
                            UnsubscribeStudentFromLessonView, OpenConversationRoomView, ConversationRoomView, \
                            NotificationView, MessagesWithUserView, MessagesView, UnreadMessagesView,\
                            ConversationForLessonView, CreateCommentView, TeacherCommentsView, ReportCommentView,\
-                           CloseConversationRoomView, CurrentUserView, BuyTokensView, SellTokensView
+                           CloseConversationRoomView, CurrentUserView, BuyTokensView, SellTokensView, TeacherBillView,\
+                           StudentBillView
 
 router = DefaultRouter()
 router.register(r'users', UserProfileViewSet)
@@ -19,11 +20,13 @@ urlpatterns = [
     url(r'lessons/(?P<slug>[\w-]+)/members/$', LessonStudentsListView.as_view()),  # TESTED
 
     url(r'teacher/lessons/unsubscribe/$', UnsubscribeStudentFromLessonView.as_view()),  # TESTED
+    url(r'teacher/bills/$', TeacherBillView.as_view()),  # TESTED
 
     url(r'user/my-profile/$', CurrentUserView.as_view()),  # TESTED
     url(r'user/my-lessons/$', StudentLessonsListView.as_view()),  # TESTED
-    url(r'user/tokens/buy/$', BuyTokensView.as_view()),
-    url(r'user/tokens/sell/$', SellTokensView.as_view()),
+    url(r'user/tokens/buy/$', BuyTokensView.as_view()),  # TESTED
+    url(r'user/tokens/sell/$', SellTokensView.as_view()),  # TESTED
+    url(r'user/bills/$', StudentBillView.as_view()),
 
     url(r'room/open/$', OpenConversationRoomView.as_view()),  # TESTED
     url(r'room/close/$', CloseConversationRoomView.as_view()),  # TESTED

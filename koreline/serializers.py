@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.text import slugify
 
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message,\
-                            Comment, ReportedComment
+                            Comment, ReportedComment, Bill
 
 
 class ImageBase64Field(serializers.ImageField):
@@ -250,3 +250,14 @@ class ReportedCommentSerizalizer(serializers.ModelSerializer):
 
         return super(ReportedCommentSerizalizer, self).create(validated_data)
 
+
+class BillSerializer(serializers.ModelSerializer):
+    user = UserProfileSerializer()
+    lesson = LessonSerializer()
+    createDate = serializers.DateTimeField(source='create_date', read_only=True)
+    payDate = serializers.DateTimeField(source='pay_date', read_only=True, allow_null=True)
+    isPaid = serializers.BooleanField(source='is_paid', read_only=True)
+
+    class Meta:
+        model = Bill
+        fields = ('id', 'user', 'lesson', 'amount', 'isPaid', 'payDate', 'createDate')

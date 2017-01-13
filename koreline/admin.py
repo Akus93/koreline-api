@@ -1,6 +1,6 @@
 from django.contrib import admin
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message,\
-    Comment, ReportedComment
+    Comment, ReportedComment, AccountOperation, Bill
 
 
 class ReportedCommentAdmin(admin.ModelAdmin):
@@ -10,6 +10,7 @@ class ReportedCommentAdmin(admin.ModelAdmin):
     list_select_related = ['comment', 'author']
     list_per_page = 25
 
-admin.site.register([UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment])
+admin.site.register([UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment,
+                     AccountOperation, Bill])
 
 admin.site.register(ReportedComment, ReportedCommentAdmin)

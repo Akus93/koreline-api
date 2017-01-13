@@ -15,9 +15,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadOnlyForLesson,\
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
-    NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer, ReportedCommentSerizalizer
+    NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer, ReportedCommentSerizalizer,\
+    BillSerializer
 from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message,\
-    Comment, AccountOperation
+    Comment, AccountOperation, Bill
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -35,7 +36,7 @@ class LessonViewSet(ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [IsOwnerOrReadOnlyForLesson]
-    # throttle_classes = (LessonThrottle, ) # TODO odkomentowac po testach
+    throttle_classes = (LessonThrottle, )
     lookup_field = 'slug'
     filter_backends = (DjangoFilterBackend,)
     filter_class = LessonFilter
@@ -394,17 +395,17 @@ class BuyTokensView(APIView):
         if amount < 1:
             return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        currnet_user = UserProfile.objects.get(user=request.user)
+        current_user = UserProfile.objects.get(user=request.user)
 
         try:
             with transaction.atomic():
-                currnet_user.tokens += amount
-                currnet_user.save()
-                AccountOperation.objects.create(user=currnet_user, type='BUY', amount=amount)
+                current_user.tokens += amount
+                current_user.save()
+                AccountOperation.objects.create(user=current_user, type='BUY', amount=amount)
         except IntegrityError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(UserProfileSerializer(currnet_user).data, status=status.HTTP_200_OK)
+        return Response(UserProfileSerializer(current_user).data, status=status.HTTP_200_OK)
 
 
 class SellTokensView(APIView):
@@ -421,18 +422,119 @@ class SellTokensView(APIView):
         if amount < 1:
             return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        currnet_user = UserProfile.objects.get(user=request.user)
+        current_user = UserProfile.objects.get(user=request.user)
 
-        if currnet_user.tokens < amount:
+        if current_user.tokens < amount:
             return Response({'amount': 'Nie posiadasz wystarczającej liczby żetonów.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                currnet_user.tokens -= amount
-                currnet_user.save()
-                AccountOperation.objects.create(user=currnet_user, type='SELL', amount=amount)
+                current_user.tokens -= amount
+                current_user.save()
+                AccountOperation.objects.create(user=current_user, type='SELL', amount=amount)
         except IntegrityError:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(UserProfileSerializer(currnet_user).data, status=status.HTTP_200_OK)
+        return Response(UserProfileSerializer(current_user).data, status=status.HTTP_200_OK)
+
+
+class TeacherBillView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """Lista wystawionych rachunków"""
+
+        if not request.user.userprofile.is_teacher:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+        bills = Bill.objects.filter(lesson__teacher__user=request.user).select_related('lesson', 'student')
+        return Response(BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        """Wystawia rachunek"""
+
+        lesson_slug = request.data.get('lesson', '')
+        student_username = request.data.get('student', '')
+
+        try:
+            student = UserProfile.objects.get(user__username=student_username)
+        except UserProfile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            lesson = Lesson.objects.get(slug=lesson_slug, teacher=request.user.userprofile)
+        except Lesson.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if not LessonMembership.objects.filter(lesson=lesson, student=student).count():
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            amount = int(request.data.get('amount', ''))
+        except ValueError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if amount < 1:
+            return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        bill = Bill.objects.create(user=student, lesson=lesson, amount=amount)
+
+        return Response(BillSerializer(bill).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, format=None):
+        """Usuwa rachunek"""
+
+        bill_id = request.data.get('bill', '')
+        try:
+            bill = Bill.objects.get(id=bill_id, lesson__teacher__user=request.user)
+        except Bill.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        bill.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentBillView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """Lista otrzymanych rachunków"""
+
+        bills = Bill.objects.filter(user__user=request.user).select_related('lesson', 'student')
+        return Response(BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        """Oplaca rachunek"""
+
+        bill_id = request.data.get('bill', '')
+
+        current_user = UserProfile.objects.get(user=request.user)
+
+        try:
+            bill = Bill.objects.select_related('lesson', 'user', 'lesson__teacher')\
+                .get(id=bill_id, user__user=request.user, is_paid=False)
+        except Bill.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if current_user.tokens < bill.amount:
+            return Response({'error': 'Nie posiadasz wystarczającej liczby żetonów.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                current_user.tokens -= bill.amount
+                bill.lesson.teacher.tokens += bill.amount
+                bill.is_paid = True
+                bill.paid_date = now()
+                bill.save()
+                current_user.save()
+                bill.lesson.teacher.save()
+        except IntegrityError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        Notification.objects.create(user=bill.lesson.teacher, title='Opłacono rachunek', type=Notification.PAID_BILL,
+                                    text='{} opłacił rachunek za lekcję {}.'.format(bill.user, bill.lesson))
+        return Response(BillSerializer(bill).data, status=status.HTTP_200_OK)
+
+
+

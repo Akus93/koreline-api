@@ -28,12 +28,16 @@ class Notification(models.Model):
     STUDENT_UNSUBSCRIBE = 'STUDENT_UNSUBSCRIBE'
     SUBSCRIBE = 'SUBSCRIBE'
     COMMENT = 'COMMENT'
+    NEW_BILL = 'NEW_BILL'
+    PAID_BILL = 'PAID_BILL'
     NOTIFICATION_TYPES = (
         (INVITE, 'INVITE'),
         (TEACHER_UNSUBSCRIBE, 'TEACHER_UNSUBSCRIBE'),
         (STUDENT_UNSUBSCRIBE, 'STUDENT_UNSUBSCRIBE'),
         (SUBSCRIBE, 'SUBSCRIBE'),
-        (COMMENT, 'COMMENT')
+        (COMMENT, 'COMMENT'),
+        (NEW_BILL, 'NEW_BILL'),
+        (PAID_BILL, 'PAID_BILL')
     )
     user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
     title = models.CharField(verbose_name='Tytuł', max_length=128)
@@ -192,6 +196,22 @@ class AccountOperation(models.Model):
     amount = models.PositiveSmallIntegerField(verbose_name='Liczba żetonów')
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
 
+    def __str__(self):
+        return 'Operacja {} na koncie {}'.format(self.type, self.user)
+
+    class Meta:
+        verbose_name = 'operacja na koncie'
+        verbose_name_plural = 'Operacje na koncie'
+
+
+class Bill(models.Model):
+    user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
+    lesson = models.ForeignKey(Lesson, verbose_name='Lekcja')
+    amount = models.PositiveSmallIntegerField(verbose_name='Kwota')
+    is_paid = models.BooleanField(verbose_name='Czy oplacono', default=False)
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+    paid_date = models.DateTimeField(verbose_name='Data opłacenia', blank=True, null=True)
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -261,3 +281,10 @@ def notify_teacher_about_new_comment(sender, instance, created, **kwargs):
     if created:
         Notification.objects.create(user=instance.teacher, title='Nowy komentarz', type=Notification.COMMENT,
                                     text='Użytkownik {} wystawił Ci opinie.'.format(instance.author))
+
+
+@receiver(post_save, sender=Bill)
+def notify_student_about_new_bill(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(user=instance.user, title='Nowy rachunek', type=Notification.NEW_BILL,
+                                    text='Wystawiono Ci rachunek za lekcję {}.'.format(instance.lesson))

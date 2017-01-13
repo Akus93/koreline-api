@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership, Room, Comment, \
-                            ReportedComment, Notification, AccountOperation
+                            ReportedComment, Notification, AccountOperation, Bill
 from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer, RoomSerializer,\
                                  CommentSerizalizer, ReportedCommentSerizalizer, NotificationSerializer
 
@@ -978,7 +978,7 @@ class NotificationTests(BaseApiTest):
         self.client.credentials()
 
 
-class AccountOperationTest(BaseApiTest):
+class AccountOperationTests(BaseApiTest):
 
     def test_success_buy_tokens(self):
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
@@ -1046,5 +1046,121 @@ class AccountOperationTest(BaseApiTest):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 100)
         self.assertEqual(AccountOperation.objects.count(), 0)
+        self.client.credentials()
+
+
+class BillTests(BaseApiTest):
+
+    def test_success_create_bill(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_student.user.username,
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Bill.objects.count(), 1)
+        bill = Bill.objects.first()
+        self.assertEqual(bill.lesson, self.test_lesson)
+        self.assertEqual(bill.user, self.test_student)
+        self.assertEqual(bill.amount, 20)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_unauthorized(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_student.user.username,
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Bill.objects.count(), 0)
+
+    def test_unsuccess_create_bill_unknown_student(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': 'unknown',
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Bill.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_unknown_lesson(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': 'unknown',
+            'student': self.test_student.user.username,
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Bill.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_student_not_member(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_student.user.username,
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Bill.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_bad_amount(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_student.user.username,
+            'amount': 'bad'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Bill.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_too_low_amount(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_student.user.username,
+            'amount': -20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Bill.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_create_bill_not_lesson_owner(self):
+        self.test_membership = LessonMembership.objects.create(student=self.test_student, lesson=self.test_lesson)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_student_token.key)
+        url = '/api/teacher/bills/'
+        data = {
+            'lesson': self.test_lesson.slug,
+            'student': self.test_teacher.user.username,
+            'amount': 20
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Bill.objects.count(), 0)
         self.client.credentials()
 
