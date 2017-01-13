@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.utils.timezone import now
 from django.db.models import Q
+from django.db import transaction, IntegrityError
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +16,8 @@ from koreline.permissions import IsOwnerOrReadOnlyForUserProfile, IsOwnerOrReadO
     IsTeacherOrStudentForLessonMembership, IsTeacher
 from koreline.serializers import UserProfileSerializer, LessonSerializer, LessonMembershipSerializer, RoomSerializer, \
     NotificationSerializer, MessageSerializer, LastMessageSerializer, CommentSerizalizer, ReportedCommentSerizalizer
-from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message, Comment
+from koreline.models import UserProfile, Lesson, Subject, Stage, LessonMembership, Room, Notification, Message,\
+    Comment, AccountOperation
 from koreline.filters import LessonFilter, LessonMembershipFilter
 from koreline.throttles import LessonThrottle
 
@@ -376,3 +378,61 @@ class ReportCommentView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BuyTokensView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        """Dodaje żetony do konta"""
+
+        try:
+            amount = int(request.data.get('amount', ''))
+        except ValueError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if amount < 1:
+            return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        currnet_user = UserProfile.objects.get(user=request.user)
+
+        try:
+            with transaction.atomic():
+                currnet_user.tokens += amount
+                currnet_user.save()
+                AccountOperation.objects.create(user=currnet_user, type='BUY', amount=amount)
+        except IntegrityError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(UserProfileSerializer(currnet_user).data, status=status.HTTP_200_OK)
+
+
+class SellTokensView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        """Wypłaca żetony z konta"""
+
+        try:
+            amount = int(request.data.get('amount', ''))
+        except ValueError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if amount < 1:
+            return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        currnet_user = UserProfile.objects.get(user=request.user)
+
+        if currnet_user.tokens < amount:
+            return Response({'amount': 'Nie posiadasz wystarczającej liczby żetonów.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                currnet_user.tokens -= amount
+                currnet_user.save()
+                AccountOperation.objects.create(user=currnet_user, type='SELL', amount=amount)
+        except IntegrityError:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(UserProfileSerializer(currnet_user).data, status=status.HTTP_200_OK)

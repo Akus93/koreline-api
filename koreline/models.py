@@ -180,6 +180,19 @@ class ReportedComment(models.Model):
         verbose_name_plural = 'Zgłoszone komentarze'
 
 
+class AccountOperation(models.Model):
+    BUY = 'BUY'
+    SELL = 'SELL'
+    OPERATION_TYPES = (
+        (BUY, 'BUY'),
+        (SELL, 'SELL'),
+    )
+    user = models.ForeignKey(UserProfile, verbose_name='Uzytkownik')
+    type = models.CharField(verbose_name='Typ operacji', choices=OPERATION_TYPES, max_length=32)
+    amount = models.PositiveSmallIntegerField(verbose_name='Liczba żetonów')
+    create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
+
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:

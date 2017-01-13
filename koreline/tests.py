@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from koreline.models import UserProfile, Lesson, Subject, Stage, Message, LessonMembership, Room, Comment, \
-                            ReportedComment, Notification
+                            ReportedComment, Notification, AccountOperation
 from koreline.serializers import UserProfileSerializer, LessonSerializer, MessageSerializer, RoomSerializer,\
                                  CommentSerizalizer, ReportedCommentSerizalizer, NotificationSerializer
 
@@ -976,3 +976,75 @@ class NotificationTests(BaseApiTest):
         response = self.client.put(url, {'id': 42})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.client.credentials()
+
+
+class AccountOperationTest(BaseApiTest):
+
+    def test_success_buy_tokens(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/buy/'
+        response = self.client.post(url, {'amount': 10})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 10)
+        self.assertEqual(AccountOperation.objects.count(), 1)
+        account_operation = AccountOperation.objects.first()
+        self.assertEqual(account_operation.type, 'BUY')
+        self.assertEqual(account_operation.user, self.test_teacher)
+        self.assertEqual(account_operation.amount, 10)
+        self.client.credentials()
+
+    def test_unsuccess_buy_tokens_amount_not_int(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/buy/'
+        response = self.client.post(url, {'amount': 'bad'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 0)
+        self.assertEqual(AccountOperation.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_buy_tokens_bad_amount(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/buy/'
+        response = self.client.post(url, {'amount': -20})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 0)
+        self.assertEqual(AccountOperation.objects.count(), 0)
+        self.client.credentials()
+
+    def test_success_sell_tokens(self):
+        self.test_teacher.tokens = 100
+        self.test_teacher.save()
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/sell/'
+        response = self.client.post(url, {'amount': 20})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 80)
+        self.assertEqual(AccountOperation.objects.count(), 1)
+        account_operation = AccountOperation.objects.first()
+        self.assertEqual(account_operation.type, 'SELL')
+        self.assertEqual(account_operation.user, self.test_teacher)
+        self.assertEqual(account_operation.amount, 20)
+        self.client.credentials()
+
+    def test_unsuccess_sell_tokens_amount_not_int(self):
+        self.test_teacher.tokens = 100
+        self.test_teacher.save()
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/sell/'
+        response = self.client.post(url, {'amount': 'bad'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 100)
+        self.assertEqual(AccountOperation.objects.count(), 0)
+        self.client.credentials()
+
+    def test_unsuccess_sell_tokens_amount_too_much(self):
+        self.test_teacher.tokens = 100
+        self.test_teacher.save()
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.test_teacher_token.key)
+        url = '/api/user/tokens/sell/'
+        response = self.client.post(url, {'amount': 120})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(UserProfile.objects.get(id=self.test_teacher.id).tokens, 100)
+        self.assertEqual(AccountOperation.objects.count(), 0)
+        self.client.credentials()
+
