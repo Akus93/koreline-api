@@ -21,3 +21,6 @@ requests==2.11.1
 requests-oauthlib==0.7.0
 six==1.10.0
 urllib3==1.17
+whitenoise==3.2
+gunicorn==19.6.0
+dj-database-url==0.4.1
