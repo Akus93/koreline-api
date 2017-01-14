@@ -30,6 +30,7 @@ class Notification(models.Model):
     COMMENT = 'COMMENT'
     NEW_BILL = 'NEW_BILL'
     PAID_BILL = 'PAID_BILL'
+    DELETE_BILL = 'DELETE_BILL'
     NOTIFICATION_TYPES = (
         (INVITE, 'INVITE'),
         (TEACHER_UNSUBSCRIBE, 'TEACHER_UNSUBSCRIBE'),
@@ -37,7 +38,8 @@ class Notification(models.Model):
         (SUBSCRIBE, 'SUBSCRIBE'),
         (COMMENT, 'COMMENT'),
         (NEW_BILL, 'NEW_BILL'),
-        (PAID_BILL, 'PAID_BILL')
+        (PAID_BILL, 'PAID_BILL'),
+        (DELETE_BILL, 'DELETE_BILL')
     )
     user = models.ForeignKey(UserProfile, verbose_name='Odbiorca')
     title = models.CharField(verbose_name='Tytuł', max_length=128)
@@ -212,6 +214,13 @@ class Bill(models.Model):
     create_date = models.DateTimeField(auto_now_add=True, verbose_name='Data utworzenia')
     paid_date = models.DateTimeField(verbose_name='Data opłacenia', blank=True, null=True)
 
+    def __str__(self):
+        return 'Rachunek za lekcje {} dla {}'.format(self.lesson, self.user)
+
+    class Meta:
+        verbose_name = 'rachunek'
+        verbose_name_plural = 'Rachunki'
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -288,3 +297,10 @@ def notify_student_about_new_bill(sender, instance, created, **kwargs):
     if created:
         Notification.objects.create(user=instance.user, title='Nowy rachunek', type=Notification.NEW_BILL,
                                     text='Wystawiono Ci rachunek za lekcję {}.'.format(instance.lesson))
+
+
+@receiver(post_delete, sender=Bill)
+def notify_student_about_delete_bill(sender, instance, *args, **kwargs):
+    Notification.objects.create(user=instance.user, title='Usunięcie rachunku',
+                                type=Notification.DELETE_BILL,
+                                text='Rachunek do lekcji {} został usunięty.'.format(instance.lesson))

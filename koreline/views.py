@@ -448,7 +448,7 @@ class TeacherBillView(APIView):
         if not request.user.userprofile.is_teacher:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-        bills = Bill.objects.filter(lesson__teacher__user=request.user).select_related('lesson', 'student')
+        bills = Bill.objects.filter(lesson__teacher__user=request.user).select_related('lesson', 'user')
         return Response(BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
@@ -482,12 +482,14 @@ class TeacherBillView(APIView):
 
         return Response(BillSerializer(bill).data, status=status.HTTP_200_OK)
 
-    def delete(self, request, format=None):
+
+class TeacherBillDeleteView(APIView):
+
+    def delete(self, request, pk, format=None):
         """Usuwa rachunek"""
 
-        bill_id = request.data.get('bill', '')
         try:
-            bill = Bill.objects.get(id=bill_id, lesson__teacher__user=request.user)
+            bill = Bill.objects.get(id=pk, lesson__teacher__user=request.user, is_paid=False)
         except Bill.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         bill.delete()
@@ -500,7 +502,7 @@ class StudentBillView(APIView):
     def get(self, request, format=None):
         """Lista otrzymanych rachunków"""
 
-        bills = Bill.objects.filter(user__user=request.user).select_related('lesson', 'student')
+        bills = Bill.objects.filter(user__user=request.user).select_related('lesson', 'user')
         return Response(BillSerializer(bills, many=True).data, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):

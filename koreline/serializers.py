@@ -255,9 +255,9 @@ class BillSerializer(serializers.ModelSerializer):
     user = UserProfileSerializer()
     lesson = LessonSerializer()
     createDate = serializers.DateTimeField(source='create_date', read_only=True)
-    payDate = serializers.DateTimeField(source='pay_date', read_only=True, allow_null=True)
+    paidDate = serializers.DateTimeField(source='paid_date', read_only=True, allow_null=True)
     isPaid = serializers.BooleanField(source='is_paid', read_only=True)
 
     class Meta:
         model = Bill
-        fields = ('id', 'user', 'lesson', 'amount', 'isPaid', 'payDate', 'createDate')
+        fields = ('id', 'user', 'lesson', 'amount', 'isPaid', 'paidDate', 'createDate')
