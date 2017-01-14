@@ -1,1 +1,1 @@
-web: gunicorn koreline-pl.wsgi --log-file -
+web: gunicorn koreline_pl.wsgi --log-file -
