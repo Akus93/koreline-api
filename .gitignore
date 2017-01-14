@@ -1,4 +1,4 @@
-#koreline/migrations/
+koreline/migrations/
 uploads
 .idea
 __pycache__/
