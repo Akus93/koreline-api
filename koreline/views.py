@@ -295,11 +295,6 @@ class MessagesView(APIView):
                                    .filter(Q(senders__reciver=current_user) | Q(recivers__sender=current_user))\
                                    .order_by('user__first_name')\
                                    .distinct()
-        # messages = []
-        # for user in users:
-        #     last_message = Message.objects.filter(Q(sender=current_user) | Q(reciver=current_user),
-        #                                           Q(sender=user) | Q(reciver=user)).first()
-        #     messages.append({'user': user, 'message': last_message})
         return Response(UserProfileSerializer(users, many=True).data, status=status.HTTP_200_OK)
 
     def post(self, request, format=None):
@@ -308,7 +303,6 @@ class MessagesView(APIView):
         reciver = request.data.get('reciver', '')
         title = request.data.get('title', '')
         text = request.data.get('text', '')
-
         serializer = MessageSerializer(data={'reciver_save': reciver,
                                              'sender_save': request.user.username,
                                              'text': text, 'title': title})
@@ -334,8 +328,6 @@ class CreateCommentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
-        """Tworzy nowy komentarz"""
-
         teacher = request.data.get('teacher', '')
         text = request.data.get('text', '')
         rate = request.data.get('rate', '')
@@ -420,7 +412,7 @@ class SellTokensView(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         if amount < 1:
-            return Response({'amount': 'Liczba żetowów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'amount': 'Liczba żetonów musi być większa od 0.'}, status=status.HTTP_400_BAD_REQUEST)
 
         current_user = UserProfile.objects.get(user=request.user)
 
