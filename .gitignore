@@ -1,4 +1,6 @@
 koreline/migrations/
+koreline/migrations/*
+
 migrations
 migrations/
 uploads
