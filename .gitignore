@@ -1,4 +1,6 @@
 koreline/migrations/
+migrations
+migrations/
 uploads
 .idea
 __pycache__/

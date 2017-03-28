@@ -1,16 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-import pusher
 
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='Użytkownik')
     birth_date = models.DateField(null=True, blank=True, verbose_name='Data urodzenia')
-    is_teacher = models.BooleanField(default=False)
-    photo = models.ImageField(upload_to='photos', max_length=255, blank=True, null=True)
-    tokens = models.PositiveIntegerField(verbose_name="Żetony", default=0)
+    is_teacher = models.BooleanField(verbose_name='Czy nauczyciel', default=False)
+    photo = models.ImageField(verbose_name='Zdjęcie', upload_to='photos', max_length=255, blank=True, null=True)
+    tokens = models.PositiveIntegerField(verbose_name='Żetony', default=0)
     headline = models.CharField(verbose_name='Nagłówek', max_length=70, blank=True, null=True)
     biography = models.TextField(verbose_name='Biografia', max_length=2048, blank=True, null=True)
 
@@ -220,87 +217,3 @@ class Bill(models.Model):
     class Meta:
         verbose_name = 'rachunek'
         verbose_name_plural = 'Rachunki'
-
-
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.userprofile.save()
-
-
-@receiver(post_delete, sender=UserProfile)
-def post_delete_user(sender, instance, *args, **kwargs):
-    instance.user.delete()
-
-
-@receiver(post_save, sender=Room)
-def notify_user_about_room(sender, instance, created, **kwargs):
-    if created:
-        pusher_client = pusher.Pusher(
-            app_id='280178',
-            key='15b5a30c14857f14b7a3',
-            secret='2c00695673458f67097f',
-            cluster='eu',
-            ssl=True
-        )
-        teacher_name = instance.lesson.teacher.user.get_full_name() or instance.lesson.teacher.user.username
-        pusher_client.trigger(instance.student.user.username+'-room-invite-channel', 'room-invite-event',
-                              {
-                                  'message': '{} zaprosił Cie do konwersacji.'.format(teacher_name),
-                                  'room': instance.key
-                              })
-
-        Notification.objects.create(user=instance.student, title='Zaproszenie do konwersacji', type=Notification.INVITE,
-                                    data=instance.key,
-                                    text='Nauczyciel {} zaprosił Cię do konwersacji dotyczącej lekcji {}.'
-                                    .format(instance.lesson.teacher, instance.lesson))
-
-
-@receiver(post_save, sender=LessonMembership)
-def notify_teacher_about_new_student(sender, instance, created, **kwargs):
-    if created:
-        Notification.objects.create(user=instance.lesson.teacher, title='Nowy uczeń', type=Notification.SUBSCRIBE,
-                                    data=instance.student.user.username,
-                                    text='Uczeń {} zapisał się do Twojej lekcji {}.'.format(instance.student,
-                                                                                            instance.lesson))
-
-
-@receiver(post_delete, sender=LessonMembership)
-def notify_teacher_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
-    Notification.objects.create(user=instance.lesson.teacher, title='Wypis ucznia',
-                                type=Notification.TEACHER_UNSUBSCRIBE,
-                                text='Uczeń {} został wypisany z Twojej lekcji {}.'.format(instance.student,
-                                                                                           instance.lesson))
-
-
-@receiver(post_delete, sender=LessonMembership)
-def notify_student_about_unsubscribe_from_lesson(sender, instance, *args, **kwargs):
-    Notification.objects.create(user=instance.student, title='Usunięcie z lekcji',
-                                type=Notification.STUDENT_UNSUBSCRIBE,
-                                text='Wypisano Cię z lekcji {}.'.format(instance.lesson))
-
-
-@receiver(post_save, sender=Comment)
-def notify_teacher_about_new_comment(sender, instance, created, **kwargs):
-    if created:
-        Notification.objects.create(user=instance.teacher, title='Nowy komentarz', type=Notification.COMMENT,
-                                    text='Użytkownik {} wystawił Ci opinie.'.format(instance.author))
-
-
-@receiver(post_save, sender=Bill)
-def notify_student_about_new_bill(sender, instance, created, **kwargs):
-    if created:
-        Notification.objects.create(user=instance.user, title='Nowy rachunek', type=Notification.NEW_BILL,
-                                    text='Wystawiono Ci rachunek za lekcję {}.'.format(instance.lesson))
-
-
-@receiver(post_delete, sender=Bill)
-def notify_student_about_delete_bill(sender, instance, *args, **kwargs):
-    Notification.objects.create(user=instance.user, title='Usunięcie rachunku',
-                                type=Notification.DELETE_BILL,
-                                text='Rachunek do lekcji {} został usunięty.'.format(instance.lesson))

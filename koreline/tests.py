@@ -53,7 +53,7 @@ class RegistrationTests(BaseApiTest):
         data = {'email': 'student@otherdomain.com', 'password1': 'testpassword123', 'password2': 'testpassword123'}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(User.objects.get(email='student@otherdomain.com').username, 'student2')
+        self.assertTrue(User.objects.get(email='student@otherdomain.com').username.startswith('student'))
 
     def test_unsuccess_registration_existing_email(self):
         url = '/auth/registration/'
